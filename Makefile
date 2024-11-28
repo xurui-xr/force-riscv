@@ -20,7 +20,10 @@ export FORCE_PYTHON_VER ?= $(PYVER)
 
 # this really ought to use pkg-config - there could be more than one include
 # directory.
-export FORCE_PYTHON_INC ?= /usr/include/python$(FORCE_PYTHON_VER)
+# Use pkg-config to dynamically fetch the Python include path if available.
+export FORCE_PYTHON_INC ?= $(shell python3-config --includes | sed 's/-I//')
+
+#export FORCE_PYTHON_INC ?= /usr/local/bin/python$(FORCE_PYTHON_VER)
 export FORCE_PYTHON_LIB ?= /usr/lib/x86_64-linux-gnu/
 
 all:

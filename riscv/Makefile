@@ -19,7 +19,7 @@ BASE_SRCS := $(notdir $(wildcard ../base/src/*.cc))
 EXC_LIB_SRCS := ../utils/handcar/UopInterface.cc
 ALL_SRCS := $(ARCH_SRCS) $(THIRD_PARTY_SRCS) $(BASE_SRCS) $(SIM_SRCS) $(EXC_LIB_SRCS)
 
-OPTIMIZATION = -O2
+OPTIMIZATION = -O0
 VISIBILITY = -fvisibility=hidden
 include ../utils/make/Makefile.common
 

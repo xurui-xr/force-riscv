@@ -20,6 +20,8 @@
 #include "Constraint.h"
 #include "Log.h"
 #include "UtilityFunctions.h"
+#include "ConstraintUtils.h"
+
 
 using namespace std;
 

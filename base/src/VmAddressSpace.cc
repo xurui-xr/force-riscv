@@ -271,11 +271,11 @@ namespace Force {
     auto mem_bank      = mem_manager->GetMemoryBank(uint32(pPage->MemoryBank()));
     auto usable_constr = mem_bank->Usable();
 
-    //auto cset_s_phys_usable = ConstraintSetSerializer(*usable_constr, FORCE_CSET_DEFAULT_PERLINE);
-    //auto cset_s_vir_usable = ConstraintSetSerializer(*mpVirtualUsable->Usable(), FORCE_CSET_DEFAULT_PERLINE);
+    auto cset_s_phys_usable = ConstraintSetSerializer(*usable_constr, FORCE_CSET_DEFAULT_PERLINE);
+    auto cset_s_vir_usable = ConstraintSetSerializer(*mpVirtualUsable->Usable(), FORCE_CSET_DEFAULT_PERLINE);
 
-    // << "UVUBP phys_usable_constr: " << cset_s_phys_usable.ToDebugString() << endl;
-    // << "UVUBP vir_usable_constr: " << cset_s_vir_usable.ToDebugString() << endl;
+    LOG(debug) << "UVUBP phys_usable_constr: " << cset_s_phys_usable.ToDebugString() << endl;
+    LOG(debug) << "UVUBP vir_usable_constr: " << cset_s_vir_usable.ToDebugString() << endl;
 
     //we only need to modify the existing constraints if the page is partially usable
     if (not usable_constr->ContainsRange(pPage->PhysicalLower(), pPage->PhysicalUpper())) {
@@ -286,8 +286,8 @@ namespace Force {
       LOG(debug) << "{VmAddressSpace::UpdateVirtualUsableByPage} any_page_usable=" << any_page_usable << endl;
       //add any usable physical space back into virtual usable, translating physical to virtual before adding back in
       if (any_page_usable) {
-        //auto cset_s_phys_page_usable = ConstraintSetSerializer(phys_page_usable, FORCE_CSET_DEFAULT_PERLINE);
-        //LOG(debug) << "{VmAddressSpace::UpdateVirtualUsableByPage} phys_page_usable: " << cset_s_phys_page_usable.ToDebugString() << endl;
+        auto cset_s_phys_page_usable = ConstraintSetSerializer(phys_page_usable, FORCE_CSET_DEFAULT_PERLINE);
+        LOG(debug) << "{VmAddressSpace::UpdateVirtualUsableByPage} phys_page_usable: " << cset_s_phys_page_usable.ToDebugString() << endl;
         uint64 mask  = (pPage->PageSize() - 0x1ull);
         uint64 frame = pPage->Lower() & (~mask);
         //LOG(debug) << "{VmAddressSpace::UpdateVirtualUsableByPage} mask=0x" << mask << " frame=0x" << frame << endl;
@@ -514,7 +514,6 @@ namespace Force {
 
     for (auto phys_region : phys_regions) {
       bool region_compatible = MapPhysicalRegion(phys_region);
-
       if (not region_compatible) {
         LOG(fail) << "{VmAddressSpace::MapPhysicalRegions} not expecting incompatible regions: " << phys_region->ToString() << endl;
         FAIL("unexpected-incompatible-physical-region");

@@ -57,10 +57,10 @@ TEST_PYTHON_LIB=$(PYTHON_LIB)/libpython$(PYTHON_VER)m.so
 ifneq ("$(wildcard $(TEST_PYTHON_LIB))","")
     PYTHON_LIB_TYPE=m
 else
-    PYTHON_LIB_TYPE=
+    PYTHON_LIB_TYPE=m
 endif
 
-CFLAGS = -Wall -std=c++11 -gdwarf-3 -m64 -Werror $(OPTIMIZATION) $(PICKY_FLAGS) $(VISIBILITY) -D $(ARCH_ENUM_HEADER)
+CFLAGS = -Wall -std=c++11 -gdwarf-3 -m64 -Werror -O0 $(PICKY_FLAGS) $(VISIBILITY) -D $(ARCH_ENUM_HEADER)
 LFLAGS = -lpthread -static-libstdc++ -static-libgcc -L$(PYTHON_LIB) -lpython$(PYTHON_VER)$(PYTHON_LIB_TYPE) -lutil -ldl -rdynamic
 
 ALL_OBJS := $(ALL_SRCS:%.cc=$(OBJ_DIR)/%.o)

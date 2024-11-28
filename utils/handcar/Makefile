@@ -16,7 +16,7 @@
 SIM_SRCS := SimLoader.cc SimApiHANDCAR.cc
 ALL_SRCS := $(SIM_SRCS)
 
-OPTIMIZATION = -O2
+OPTIMIZATION = -O0
 include ../../utils/make/Makefile.common
 
 ARCH_ENUM=RISC

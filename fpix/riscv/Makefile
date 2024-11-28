@@ -18,7 +18,7 @@ include ../Makefile.target
 SIM_SRCS := SimLoader.cc SimApiHANDCAR.cc
 ALL_SRCS := $(ALL_SRCS) $(SIM_SRCS)
 
-OPTIMIZATION = -O2
+OPTIMIZATION = -O0
 include ../../utils/make/Makefile.common
 
 INC_PATHS = -I./inc -I../inc -I../../base/inc -I../../3rd_party/inc -I../../utils/handcar -I$(PYTHON_INC)

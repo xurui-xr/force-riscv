@@ -16,7 +16,7 @@
 
 BASE_SRCS := $(notdir $(wildcard src/*.cc))
 ALL_SRCS := $(BASE_SRCS) 
-OPTIMIZATION = -O2
+OPTIMIZATION = -O0
 include ../../Makefile.common
 
 INC_PATHS = -I../../inc -Iinc -I../../../3rd_party/inc
