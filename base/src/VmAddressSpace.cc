@@ -64,18 +64,18 @@ namespace Force {
 
 
   VmAddressSpace::VmAddressSpace(const VmFactory* pFactory, VmasControlBlock* pVmasCtlrBlock)
-    : VmMapper(pFactory), Object(), mpControlBlock(pVmasCtlrBlock), mpLookUpPage(nullptr), mpDefaultPageRequest(nullptr),  mpVirtualUsable(nullptr), mPages(), mPhysicalRegions(), mNoTablePages(), mVmConstraints(), mPageTableConstraints(), mFlatMapped(false)
+    : VmMapper(pFactory), Object(), mpControlBlock(pVmasCtlrBlock), mpLookUpPage(nullptr), mpDefaultPageRequest(nullptr),  mpVirtualUsable(nullptr), mPages(), mPhysicalRegions(), mNoTablePages(), mVmConstraints(), mPageTableConstraints(), mGstagePageTableConstraints(), mFlatMapped(false)
   {
 
   }
 
   VmAddressSpace::VmAddressSpace()
-    : VmMapper(), Object(), mpControlBlock(nullptr), mpLookUpPage(nullptr), mpDefaultPageRequest(nullptr),  mpVirtualUsable(nullptr), mPages(), mPhysicalRegions(), mNoTablePages(), mVmConstraints(), mPageTableConstraints(), mFlatMapped(false)
+    : VmMapper(), Object(), mpControlBlock(nullptr), mpLookUpPage(nullptr), mpDefaultPageRequest(nullptr),  mpVirtualUsable(nullptr), mPages(), mPhysicalRegions(), mNoTablePages(), mVmConstraints(), mPageTableConstraints(), mGstagePageTableConstraints(), mFlatMapped(false)
   {
   }
 
   VmAddressSpace::VmAddressSpace(const VmAddressSpace& rOther)
-    : VmMapper(rOther), Object(rOther), mpControlBlock(nullptr), mpLookUpPage(nullptr), mpDefaultPageRequest(nullptr),  mpVirtualUsable(nullptr), mPages(), mPhysicalRegions(), mNoTablePages(), mVmConstraints(), mPageTableConstraints(), mFlatMapped(false)
+    : VmMapper(rOther), Object(rOther), mpControlBlock(nullptr), mpLookUpPage(nullptr), mpDefaultPageRequest(nullptr),  mpVirtualUsable(nullptr), mPages(), mPhysicalRegions(), mNoTablePages(), mVmConstraints(), mPageTableConstraints(), mGstagePageTableConstraints(), mFlatMapped(false)
   {
     if (nullptr != rOther.mpControlBlock) {
       mpControlBlock = dynamic_cast<VmasControlBlock* > (rOther.mpControlBlock->Clone());
@@ -140,8 +140,13 @@ namespace Force {
 
   void VmAddressSpace::SetupPageTableConstraints()
   {
-    mpVmFactory->CreatePageTableConstraints(mPageTableConstraints);
+    mpVmFactory->CreatePageTableConstraints(mPageTableConstraints, false);
     for (auto constr : mPageTableConstraints)
+    {
+      constr->Setup(mpGenerator, mpControlBlock);
+    }
+    mpVmFactory->CreatePageTableConstraints(mGstagePageTableConstraints, true);
+    for (auto constr : mGstagePageTableConstraints)
     {
       constr->Setup(mpGenerator, mpControlBlock);
     }
@@ -163,12 +168,23 @@ namespace Force {
       FAIL("root_page_table_alloc_fail");
     }
 
-    ptable_manager->CommitRootPageTable(mpControlBlock->GetRootPageTable());
+    alloc = ptable_manager->AllocateGstageRootPageTable(this);
+
+    if (!alloc)
+    {
+      LOG(fail) << "{VmAddressSpace::SetupControlBlock} unable to create a new G-stage root page table." << endl;
+      FAIL("Gstage_root_page_table_alloc_fail");
+    }
 
     unique_ptr<ConstraintSet> init_virtual_usable(mpControlBlock->InitialVirtualConstraint());
 
     // Exclude flat mapped page table region from the initial virtual constraint
     for (PageTableConstraint* page_table_constr : mPageTableConstraints) {
+      init_virtual_usable->SubConstraintSet(*(page_table_constr->BlockAllocated()));
+    }
+
+    // Exclude flat mapped g-stage page table region from the initial virtual constraint
+    for (PageTableConstraint* page_table_constr : mGstagePageTableConstraints) {
       init_virtual_usable->SubConstraintSet(*(page_table_constr->BlockAllocated()));
     }
 
@@ -178,6 +194,11 @@ namespace Force {
   bool VmAddressSpace::InitializeRootPageTable(RootPageTable* pRootTable)
   {
     return mpControlBlock->InitializeRootPageTable(this, pRootTable);
+  }
+
+  bool VmAddressSpace::InitializeGstageRootPageTable(RootPageTable* pRootTable)
+  {
+    return mpControlBlock->InitializeGstageRootPageTable(this, pRootTable);
   }
 
   bool VmAddressSpace::CompatiblePageTableContext(const VmAddressSpace* pOtherVmas) const
@@ -228,6 +249,11 @@ namespace Force {
       init_virtual_usable->SubConstraintSet(*(page_table_constr->BlockAllocated()));
     }
 
+    // Exclude flat mapped g-stage page table region from the initial virtual constraint
+    for (PageTableConstraint* page_table_constr : mGstagePageTableConstraints) {
+      init_virtual_usable->SubConstraintSet(*(page_table_constr->BlockAllocated()));
+    }
+
     if (mFlatMapped)
     {
       auto usable_constr = mpControlBlock->GetPhysicalUsableConstraint();
@@ -251,7 +277,7 @@ namespace Force {
       UpdateVirtualUsableByPage(page);
     }
 
-    auto cset_s_init_vir_usable = ConstraintSetSerializer(*init_virtual_usable, FORCE_CSET_DEFAULT_PERLINE);
+    auto cset_s_init_vir_usable = ConstraintSetSerializer(*mpVirtualUsable->Usable(), FORCE_CSET_DEFAULT_PERLINE);
     LOG(trace) << "{VmAddressSpace::PopulateVirtualUsableConstraint} final vir_usable=" << cset_s_init_vir_usable.ToDebugString() << endl;
   }
 

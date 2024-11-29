@@ -237,9 +237,9 @@ namespace Force {
     }
   }
 
-  bool MemoryBank::AllocatePageTableBlock(uint64 align, uint64 size, const ConstraintSet* range, uint64& start)
+  bool MemoryBank::AllocatePageTableBlock(uint64 align, uint64 size, const ConstraintSet* range, uint64& start, bool isGstage)
   {
-    uint64 allocated = mpPageTableManager->AllocatePageTableBlock(align, size, Usable(), range, start);
+    uint64 allocated = mpPageTableManager->AllocatePageTableBlock(align, size, Usable(), range, start, isGstage);
     if (allocated) {
       uint64 pt_end = start + (size - 1);
       ConstraintSet allocate_constr(start, pt_end);
@@ -401,10 +401,10 @@ namespace Force {
     return mem_bank->GetPhysicalPageManager();
   }
 
-  bool MemoryManager::AllocatePageTableBlock(EMemBankType memType, uint64 align, uint64 size, const ConstraintSet* usable, uint64& start)
+  bool MemoryManager::AllocatePageTableBlock(EMemBankType memType, uint64 align, uint64 size, const ConstraintSet* usable, uint64& start, bool isGstage)
   {
     MemoryBank* mem_bank = GetMemoryBank(uint32(memType));
-    return mem_bank->AllocatePageTableBlock(align, size, usable, start);
+    return mem_bank->AllocatePageTableBlock(align, size, usable, start, isGstage);
   }
 
   PageTableManager* MemoryManager::GetPageTableManager(EMemBankType memType) const

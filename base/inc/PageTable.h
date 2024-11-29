@@ -78,14 +78,16 @@ namespace Force {
   public:
     RootPageTable(); //!< Constructor.
     ~RootPageTable(); //!< Destructor.
-    void Setup(uint32 tableStep, uint32 highBit, uint32 tableLowBit, const std::string& rPteSuffix, uint32 rPteShift, uint32 rMaxTableLevel); //!< Setup Page Table parameters
+    void Setup(uint32 tableStep, uint32 NexttableStep, uint32 highBit, uint32 tableLowBit, const std::string& rPteSuffix, uint32 rPteShift, uint32 rMaxTableLevel); //!< Setup Page Table parameters
     void SignUp(VmAddressSpace* addressSpace); //!< Sign up with the RootPageTable.
     void SetLookUpBitRangeRoot(uint32 lowBit,uint32 highBit); //!< Set the lookup bit range for Root
     uint32 HighestLookUpBit()     const { return mHighestLookUpBit; } //!< Return value of the lowest look up bit.
     uint32 RootTableSize()        const { return 1ul << (mHighestLookUpBit - mLowestLookUpBit + 1 + PteShift()); } //!< return size of root table
     uint32 PteShift()             const { return mPteShift; } //!< Return pte shift
     uint32 TableSize()            const { return 1ul << (mTableStep + PteShift()); } //!< Return size of table
-    uint64 TableStep()            const { return mTableStep; } //!< Return table base address.
+    uint32 NextTableSize()            const { return 1ul << (mNextTableStep + PteShift()); } //!< Return size of next level table
+    uint64 TableStep()            const { return mTableStep; } //!< Return table step.
+    uint64 NextTableStep()            const { return mNextTableStep; } //!< Return next level table step.
     uint32 MaxTableLevel()        const { return mMaxTableLevel; } //!< Return max supported table level
     const VmAddressSpace* GetBaseVmas() const { return mpBaseAddressSpace; } //!< Return pointer to first registered address space, used to determine compatible context for aliasing
     std::string TableIdentifier() const { return mTableIdentifier; } //!< Return table identifier
@@ -97,6 +99,7 @@ namespace Force {
   protected:
     uint32 mHighestLookUpBit; //!< MSb of the look up bit range.
     uint32 mTableStep; //!< Number of bits resolved by this table.
+    uint32 mNextTableStep; //!< Number of bits resolved by next level table.
     uint32 mPteShift;  //!< 2 * pte-shift = size of pte
     uint32 mMaxTableLevel; //!< max # of tables in table-walk
     VmAddressSpace* mpBaseAddressSpace; //!< Initial address space is used to identify the context compatibility when aliasing root page tables.

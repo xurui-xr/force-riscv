@@ -35,7 +35,7 @@ namespace Force {
 
   class PagingInfo {
   public:
-    PagingInfo(): mPagingMode(EPagingMode(0)), mPteSet() { } //!< Constructor.
+    PagingInfo(bool isForGstage): mPagingMode(EPagingMode(0)), mPteSet(), isForGstage(isForGstage) { } //!< Constructor.
     virtual ~PagingInfo(); //!< Destructor.
 
     void Setup(const ArchInfo& archInfo); //!< Setup PagingInfo container, load paging files.
@@ -48,6 +48,7 @@ namespace Force {
     EPagingMode mPagingMode; //!< Paging mode
     std::map<std::string, PteStructure* > mPteSet; //!< Map containing all PteStructure objects.
     friend class PagingParser;
+    bool isForGstage;
   };
 
 }

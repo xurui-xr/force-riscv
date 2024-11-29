@@ -391,7 +391,7 @@ namespace Force {
 
   void GenInstructionAgent::UpdateRegisterFromSimulation(const vector<RegUpdate>& regUpdates, bool hasExceptEvent, uint64& targetPC)
   {
-    for (auto const update : regUpdates) {
+    for (auto const &update : regUpdates) {
       if (update.access_type == "write") {
         if (update.regname == "PC") {
           auto gen_pc = mpGenerator->GetGenPC();

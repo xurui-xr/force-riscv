@@ -41,17 +41,17 @@ using namespace std;
 namespace Force {
 
   VmasControlBlock::VmasControlBlock(EPrivilegeLevelType privType, EMemBankType memType)
-    : VmControlBlock(privType, memType), mGranuleType(EPageGranuleType(0)), mMemoryAttributes(0), mAsid(0), mWriteExecuteNever(false), mpRootPageTable(nullptr), mpChoicesAdapter(nullptr), mGranuleSuffix(), mPteIdentifierSuffix(), mPageTableImplAttr(EMemAttributeImplType(0)), mpPtCompatibleImplAttrs(nullptr)
+    : VmControlBlock(privType, memType), mGranuleType(EPageGranuleType(0)), mMemoryAttributes(0), mAsid(0), mWriteExecuteNever(false), mpRootPageTable(nullptr), mpGstageRootPageTable(nullptr), mpChoicesAdapter(nullptr), mGranuleSuffix(), mPteIdentifierSuffix(), mPageTableImplAttr(EMemAttributeImplType(0)), mpPtCompatibleImplAttrs(nullptr)
   {
   }
 
   VmasControlBlock::VmasControlBlock()
-    : VmControlBlock(), mGranuleType(EPageGranuleType(0)), mMemoryAttributes(0), mAsid(0), mWriteExecuteNever(false), mpRootPageTable(nullptr), mpChoicesAdapter(nullptr), mGranuleSuffix(), mPteIdentifierSuffix(), mPageTableImplAttr(EMemAttributeImplType(0)), mpPtCompatibleImplAttrs(nullptr)
+    : VmControlBlock(), mGranuleType(EPageGranuleType(0)), mMemoryAttributes(0), mAsid(0), mWriteExecuteNever(false), mpRootPageTable(nullptr), mpGstageRootPageTable(nullptr), mpChoicesAdapter(nullptr), mGranuleSuffix(), mPteIdentifierSuffix(), mPageTableImplAttr(EMemAttributeImplType(0)), mpPtCompatibleImplAttrs(nullptr)
   {
   }
 
   VmasControlBlock::VmasControlBlock(const VmasControlBlock& rOther)
-    : VmControlBlock(rOther), mGranuleType(EPageGranuleType(0)), mMemoryAttributes(0), mAsid(0), mWriteExecuteNever(false) , mpRootPageTable(nullptr), mpChoicesAdapter(nullptr), mGranuleSuffix(), mPteIdentifierSuffix(), mPageTableImplAttr(EMemAttributeImplType(0)), mpPtCompatibleImplAttrs(nullptr)
+    : VmControlBlock(rOther), mGranuleType(EPageGranuleType(0)), mMemoryAttributes(0), mAsid(0), mWriteExecuteNever(false) , mpRootPageTable(nullptr), mpGstageRootPageTable(nullptr), mpChoicesAdapter(nullptr), mGranuleSuffix(), mPteIdentifierSuffix(), mPageTableImplAttr(EMemAttributeImplType(0)), mpPtCompatibleImplAttrs(nullptr)
   {
   }
 
@@ -130,6 +130,20 @@ namespace Force {
     else
     {
       mpRootPageTable = RootPageTableInstance();
+    }
+
+    return true;
+  }
+
+  bool VmasControlBlock::InitializeGstageRootPageTable(VmAddressSpace* pVmas, RootPageTable* pRootTable)
+  {
+    if (nullptr != pRootTable)
+    {
+      mpGstageRootPageTable = pRootTable;
+    }
+    else
+    {
+      mpGstageRootPageTable = RootPageTableInstance();
     }
 
     return true;

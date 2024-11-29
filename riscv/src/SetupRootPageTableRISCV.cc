@@ -46,12 +46,18 @@ namespace Force {
     LOG(debug) << "[SetupRootPageTableRISCV::SetupRootPageTable] table-size: " << std::dec << tableSize << " (0x" << std::hex << tableSize << ")" << std::dec << " reg: " << regName << std::endl;
 
     uint64 root_addr = 0;
+    if (regName == "hgatp") {
+      pMemMgr->AllocatePageTableBlock(bankType, tableSize, tableSize, usable, root_addr, 0);
+      LOG(debug) << "[SetupRootPageTableRISCV::SetupRootPageTable] Gstage table initial root-address: 0x" << std::hex << root_addr << std::dec << std::endl;
+      LOG(notice) << "{SetupRootPageTableRISCV::SetupRootPageTable} Gstage table root_addr=0x" << hex << root_addr << endl;
+      return root_addr;
+    }
     auto reg_ptr = pRegFile->RegisterLookup(regName);
     auto field_ptr = reg_ptr->RegisterFieldLookup("PPN");
 
     if (!field_ptr->IsInitialized())
     {
-      pMemMgr->AllocatePageTableBlock(bankType, tableSize, tableSize, usable, root_addr);
+      pMemMgr->AllocatePageTableBlock(bankType, tableSize, tableSize, usable, root_addr, 1);
       LOG(debug) << "[SetupRootPageTableRISCV::SetupRootPageTable] initial root-address: 0x" << std::hex << root_addr << std::dec << std::endl;
       pRegFile->InitializeRegisterFieldFullValue(reg_ptr, "PPN", (root_addr >> 12)); //field is just PPN, so 44:0 need to be written ignoring the page offset (should be 0x000 for this case)
       auto reg_ptrX = pRegFile->RegisterLookup(regName);
@@ -61,6 +67,7 @@ namespace Force {
     }
     else
     {
+      // TODO: distinguish with satp and hgatp
       root_addr = (field_ptr->Value() << 12);
       uint64 end = root_addr + (tableSize - 1);
       LOG(debug) << "[SetupRootPageTableRISCV::SetupRootPageTable] root-address: 0x" << std::hex << root_addr << " end: 0x" << end << std::dec << std::endl;
@@ -71,7 +78,7 @@ namespace Force {
         auto allocated_constr = pMemMgr->GetPageTableManager(bankType)->Allocated();
         if (not allocated_constr->ContainsConstraintSet(addr_constr)) // not allocated, try to reserved.
         {
-          pMemMgr->AllocatePageTableBlock(bankType, tableSize, tableSize, &addr_constr, root_addr);
+          pMemMgr->AllocatePageTableBlock(bankType, tableSize, tableSize, &addr_constr, root_addr, 0);
         }
       }
       else

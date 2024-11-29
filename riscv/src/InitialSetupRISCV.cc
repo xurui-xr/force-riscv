@@ -167,6 +167,8 @@ namespace Force {
 
     mpGenerator->InitializeRegisterFields("satp", field_map);
 
+    // TODO: hgatp init
+
     //internal privilege register init
     field_map.clear();
     field_map["MODE"] = 0x3;

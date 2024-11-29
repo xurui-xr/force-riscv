@@ -92,6 +92,7 @@ namespace Force {
     const ArchInfo* GetArchInfo() const { return mpArchInfo; } //!< Return a const pointer to ArchInfo object.
     const InstructionSet* GetInstructionSet() const { return mpInstructionSet; } //!< Return a const pointer to InstructionSet object.
     const PagingInfo* GetPagingInfo() const { return mpPagingInfo; }
+    const PagingInfo* GetGstagePagingInfo() const { return mpGstagePagingInfo; }
     RecordArchive* GetRecordArchive() const { return mpRecordArchive; } //!< Return a pointer to RecordArchive object.
     MemoryManager* GetMemoryManager() const { return mpMemoryManager; } //!< Return a pointer to MemoryManager object.
     VirtualMemoryInitializer* GetVirtualMemoryInitializer() const { return mpVirtualMemoryInitializer; } //!< Return a pointer to VirtualMemoryInitializer object.
@@ -253,6 +254,7 @@ namespace Force {
     const ArchInfo* mpArchInfo; //!< Pointer to the shared ArchInfo object for this type of Generator.
     const InstructionSet* mpInstructionSet; //!< Pointer to the shared InstructionSet object for this type of Generator.
     const PagingInfo* mpPagingInfo; //!< Pointer to the shared PagingInfo object for this type of Generator.
+    const PagingInfo* mpGstagePagingInfo; //!< Pointer to the shared GstagePagingInfo object for this type of Generator.
     MemoryManager* mpMemoryManager; //!< Pointer to the shared memory manager object.
     SimAPI* mpSimAPI; //!< Pointer to the shared SimAPI object for this type of Generator.
     VirtualMemoryInitializer* mpVirtualMemoryInitializer; //!< Pointer to the virtual memory initializer object.

@@ -42,6 +42,7 @@ namespace Force {
     void Setup(Generator* pGen) override; //!< Setup VM Context Parameters
     void GetAddressErrorRanges(std::vector<TranslationRange>& rRanges) const override; //!< Obtain address error ranges.
     bool InitializeRootPageTable(VmAddressSpace* pVmas, RootPageTable* pRootTable) override; //!< Initialize root page table.
+    bool InitializeGstageRootPageTable(VmAddressSpace* pVmas, RootPageTable* pRootTable) override; //!< Initialize G-stage root page table.
     EMemBankType NextLevelTableMemoryBank(const PageTable* parentTable, const GenPageRequest& rPageReq) const override; //!< Return memory bank of next level table.
     EMemBankType GetTargetMemoryBank(uint64 VA, GenPageRequest* pPageReq, const Page* pPage, const std::vector<ConstraintSet* >& rVmConstraints) override; //!< Gets the target memory bank based on default bank and choices
     GenPageRequest* PhysicalRegionPageRequest(const PhysicalRegion* pPhysRegion, bool& rRegionCompatible) const override; //!< Return a page request object based on physical region type specified.
@@ -52,7 +53,7 @@ namespace Force {
     void CommitPage(const Page* pPage, std::vector<ConstraintSet* >& rVmConstraints) override;
 
     uint32 PteShift() const override; //!< Return PTE shift based on PTE size.
-    uint32 HighestVaBitCurrent(uint32 rangeNum = 0ul) const override; //!< Return current highest VA bit.
+    uint32 HighestVaBitCurrent(uint32 rangeNum = 0ul, const PagingInfo* paging_info = NULL) const override; //!< Return current highest VA bit.
     ConstraintSet* GetPageTableUsableConstraint(EMemBankType memBank) const override; //!< Returns the page table physical usable constraint as determined by max phys address and variable.
     bool IsPaValid(uint64 PA, EMemBankType bank, std::string& rMsgStr) const override; //!< Check if the PA+bank is valid for the address space.
   protected:
@@ -60,7 +61,7 @@ namespace Force {
     VmasControlBlockRISCV(const VmasControlBlockRISCV& rOther) : mRegisterPrefix(rOther.mRegisterPrefix) { } //!< Copy constructor.
 
     void InitializeMemoryAttributes() override; //!< Initialize memory attributes.
-    void SetupRootPageTable(RootPageTable* pRootTable, VmAddressSpace* pVmas, EPageGranuleType granType, const std::string& pteSuffix, const std::string& regName); //!< create/setup root page table object
+    void SetupRootPageTable(RootPageTable* pRootTable, VmAddressSpace* pVmas, EPageGranuleType granType, const std::string& pteSuffix, const std::string& regName, const PagingInfo* paging_info); //!< create/setup root page table object
     void FillRegisterReload(RegisterReload* pRegContext) const override; //!< Fill register reload context.
 
     uint64 GetMaxPhysicalAddress() const override; //!< Return initial maximum physical address.

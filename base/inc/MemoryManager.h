@@ -76,7 +76,7 @@ namespace Force {
     void SetupPageTableRegion(); //!< Setup page table region in the memory bank.
     void ReserveMemory(const ConstraintSet& memConstr); //!< Reserve memory ranges.
     void UnreserveMemory(const ConstraintSet& memConstr); //!< Unreserve memory ranges
-    bool AllocatePageTableBlock(uint64 align, uint64 size, const ConstraintSet* range, uint64& start); //!< Allocate page table block.
+    bool AllocatePageTableBlock(uint64 align, uint64 size, const ConstraintSet* range, uint64& start, bool isGstage); //!< Allocate page table block.
     PhysicalPageManager* GetPhysicalPageManager() const { return mpPhysicalPageManager; } //!< Return the physical page manager.
     PageTableManager* GetPageTableManager() const { return mpPageTableManager; } //!< Return the page table manager.
     SymbolManager* GetSymbolManager() const { return mpSymbolManager; } //!< Return the symbol manager.
@@ -134,7 +134,7 @@ namespace Force {
 
     void SetupPageTableRegions(); //!< Setup page table regions.
     PhysicalPageManager* GetPhysicalPageManager(EMemBankType memType); //!< Return the physical page manager for the specified memory bank
-    bool AllocatePageTableBlock(EMemBankType memType, uint64 align, uint64 size, const ConstraintSet* usable, uint64& start); //!< Allocate page table block in a certain memory
+    bool AllocatePageTableBlock(EMemBankType memType, uint64 align, uint64 size, const ConstraintSet* usable, uint64& start, bool isGstage); //!< Allocate page table block in a certain memory
     PageTableManager* GetPageTableManager(EMemBankType memType) const; //!< Return page table manager for the specified memory bank.
     void ReserveMemory(MemoryReservation* pMemReserv); //!< Called to reserve memory.
     void UnreserveMemory(MemoryReservation* pMemReserv); //!< Called to unreserve memory.

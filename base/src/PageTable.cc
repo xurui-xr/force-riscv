@@ -199,13 +199,13 @@ namespace Force {
   }
 
   RootPageTable::RootPageTable()
-    : PageTable(), mHighestLookUpBit(0), mTableStep(0), mPteShift(0), mMaxTableLevel(0), mpBaseAddressSpace(nullptr), mTableIdentifier(""), mAddressSpaces()
+    : PageTable(), mHighestLookUpBit(0), mTableStep(0), mNextTableStep(0), mPteShift(0), mMaxTableLevel(0), mpBaseAddressSpace(nullptr), mTableIdentifier(""), mAddressSpaces()
   {
   }
 
   //move to unprotected if needed and check impl
   RootPageTable::RootPageTable(const RootPageTable& rOther)
-    : PageTable(rOther), mHighestLookUpBit(rOther.mHighestLookUpBit), mTableStep(rOther.mTableStep),
+    : PageTable(rOther), mHighestLookUpBit(rOther.mHighestLookUpBit), mTableStep(rOther.mTableStep), mNextTableStep(rOther.mNextTableStep),
       mPteShift(rOther.mPteShift), mMaxTableLevel(rOther.mMaxTableLevel), 
       mpBaseAddressSpace(nullptr), mTableIdentifier(rOther.mTableIdentifier), mAddressSpaces()
   {
@@ -215,9 +215,10 @@ namespace Force {
   {
   }
 
-  void RootPageTable::Setup(uint32 tableStep, uint32 highBit, uint32 tableLowBit, const string& rPteSuffix, uint32 rPteShift, uint32 rMaxTableLevel)
+  void RootPageTable::Setup(uint32 tableStep, uint32 NexttableStep, uint32 highBit, uint32 tableLowBit, const string& rPteSuffix, uint32 rPteShift, uint32 rMaxTableLevel)
   {
     mTableStep        = tableStep;
+    mNextTableStep        = NexttableStep;
     mHighestLookUpBit = highBit;
     mPteShift         = rPteShift;
     mMaxTableLevel    = rMaxTableLevel;

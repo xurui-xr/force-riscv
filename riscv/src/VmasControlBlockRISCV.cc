@@ -167,10 +167,13 @@ namespace Force {
     const PagingInfo* paging_info = mpGenerator->GetPagingInfo();
     switch (paging_info->GetPagingMode()) {
       case EPagingMode::Sv32:
+      case EPagingMode::Sv32x4:
         pte_shift = 2;
         break;
       case EPagingMode::Sv39:
       case EPagingMode::Sv48:
+      case EPagingMode::Sv39x4:
+      case EPagingMode::Sv48x4:
         pte_shift = 3;
         break;
       default:
@@ -197,11 +200,10 @@ namespace Force {
     return false;
   }
 
-  uint32 VmasControlBlockRISCV::HighestVaBitCurrent(uint32 rangeNum) const
+  uint32 VmasControlBlockRISCV::HighestVaBitCurrent(uint32 rangeNum, const PagingInfo* paging_info) const
   {
     uint32 highest_va_bit = 0;
 
-    const PagingInfo* paging_info = mpGenerator->GetPagingInfo();
     switch (paging_info->GetPagingMode()) {
       case EPagingMode::Sv32:
         highest_va_bit = 31;
@@ -211,6 +213,15 @@ namespace Force {
         break;
       case EPagingMode::Sv48:
         highest_va_bit = 47;
+        break;
+      case EPagingMode::Sv32x4:
+        highest_va_bit = 33;
+        break;
+      case EPagingMode::Sv39x4:
+        highest_va_bit = 40;
+        break;
+      case EPagingMode::Sv48x4:
+        highest_va_bit = 49;
         break;
       default:
         LOG(fail) << "{VmasControlBlockRISCV::HighestVaBitCurrent} Unknown paging mode " << EPagingMode_to_string(paging_info->GetPagingMode()) << endl;
@@ -248,7 +259,7 @@ namespace Force {
     mpRootPageTable = RootPageTableInstance();
     if (nullptr == pRootTable)
     {
-      SetupRootPageTable(mpRootPageTable, pVmas, mGranuleType, mPteIdentifierSuffix, AtpRegisterName());
+      SetupRootPageTable(mpRootPageTable, pVmas, mGranuleType, mPteIdentifierSuffix, AtpRegisterName(), mpGenerator->GetPagingInfo());
     }
     else
     {
@@ -264,7 +275,29 @@ namespace Force {
     return true;
   }
 
-  void VmasControlBlockRISCV::SetupRootPageTable(RootPageTable* pRootTable, VmAddressSpace* pVmas, EPageGranuleType granType, const std::string& pteSuffix, const std::string& regName)
+  bool VmasControlBlockRISCV::InitializeGstageRootPageTable(VmAddressSpace* pVmas, RootPageTable* pRootTable)
+  {
+
+    mpGstageRootPageTable = RootPageTableInstance();
+    if (nullptr == pRootTable)
+    {
+      SetupRootPageTable(mpGstageRootPageTable, pVmas, mGranuleType, mPteIdentifierSuffix, "hgatp", mpGenerator->GetGstagePagingInfo());
+    }
+    else
+    {
+      mpGstageRootPageTable  = pRootTable;
+      uint64 root_addr = mpGstageRootPageTable->TableBase();
+      uint32 tb_size   = mpGstageRootPageTable->RootTableSize();
+
+      pVmas->AddPhysicalRegion(new PhysicalRegion(root_addr, root_addr + (tb_size - 1), EPhysicalRegionType::PageTable, pRootTable->MemoryBank(), EMemDataType::Data));
+      pVmas->UpdatePageTableConstraint(root_addr, root_addr + (tb_size - 1));
+      mpGstageRootPageTable->SignUp(pVmas);
+    }
+
+    return true;
+  }
+
+  void VmasControlBlockRISCV::SetupRootPageTable(RootPageTable* pRootTable, VmAddressSpace* pVmas, EPageGranuleType granType, const std::string& pteSuffix, const std::string& regName, const PagingInfo* paging_info)
   {
     SetupRootPageTableRISCV SetupPagingObj;
 
@@ -276,25 +309,49 @@ namespace Force {
 
     uint32 pteSize = 0;
     uint32 tableStep = 0;
+    uint32 NexttableStep = 0;
     uint32 maxTableLevel = 0;
     uint32 tableLowBit = 0;
-    const PagingInfo* paging_info = mpGenerator->GetPagingInfo();
     switch (paging_info->GetPagingMode()) {
       case EPagingMode::Sv32:
         pteSize = 2;
         tableStep = 10;
+        NexttableStep = 10;
+        maxTableLevel = 1;
+        tableLowBit = 22;
+        break;
+      case EPagingMode::Sv32x4:
+        pteSize = 2;
+        tableStep = 12;
+        NexttableStep = 10;
         maxTableLevel = 1;
         tableLowBit = 22;
         break;
       case EPagingMode::Sv39:
         pteSize = 3;
         tableStep = 9;
+        NexttableStep = 9;
+        maxTableLevel = 2;
+        tableLowBit = 30;
+        break;
+      case EPagingMode::Sv39x4:
+        pteSize = 3;
+        tableStep = 11;
+        NexttableStep = 9;
         maxTableLevel = 2;
         tableLowBit = 30;
         break;
       case EPagingMode::Sv48:
         pteSize = 3;
         tableStep = 9;
+        NexttableStep = 9;
+        maxTableLevel = 3;
+        tableLowBit = 39;
+        break;
+      case EPagingMode::Sv48x4:
+        pteSize = 3;
+        tableStep = 11;
+        NexttableStep = 9;
         maxTableLevel = 3;
         tableLowBit = 39;
         break;
@@ -303,7 +360,7 @@ namespace Force {
         FAIL("unknown-paging-mode");
     }
 
-    pRootTable->Setup(tableStep, HighestVaBitCurrent(), tableLowBit, pteSuffix, pteSize, maxTableLevel);
+    pRootTable->Setup(tableStep, NexttableStep, HighestVaBitCurrent(0, paging_info), tableLowBit, pteSuffix, pteSize, maxTableLevel);
     
     pRootTable->SetMemoryBank(DefaultMemoryBank());
     auto reg_file = mpGenerator->GetRegisterFile();
@@ -405,7 +462,6 @@ namespace Force {
     auto v_constr = new ConstraintSet();
 
     uint64 va_bits = mpRootPageTable->HighestLookUpBit();
-
     const PagingInfo* paging_info = mpGenerator->GetPagingInfo();
     if (paging_info->GetPagingMode() == EPagingMode::Sv32) {
       uint64 va_end  = (0x1ull << (va_bits + 1)) - 0x1ull;

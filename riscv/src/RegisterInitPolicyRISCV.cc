@@ -60,14 +60,14 @@ namespace Force {
     const PagingInfo* paging_info = mpGenerator->GetPagingInfo();
     switch (paging_info->GetPagingMode()) {
       case EPagingMode::Sv32:
-        root_table.Setup(10, 31, 22, "", 2, 1);
+        root_table.Setup(10, 10, 31, 22, "", 2, 1);
         break;
       case EPagingMode::Sv39:
-        root_table.Setup(9, 38, 30, "", 3, 2);
+        root_table.Setup(9, 9, 38, 30, "", 3, 2);
         break;
       case EPagingMode::Sv48:
       default:
-        root_table.Setup(9, 47, 39, "", 3, 3);
+        root_table.Setup(9, 9, 47, 39, "", 3, 3);
     }
 
     uint32 tb_size = root_table.RootTableSize();

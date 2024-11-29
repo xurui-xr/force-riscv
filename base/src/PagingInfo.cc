@@ -110,7 +110,11 @@ namespace Force {
           const char* attr_name = attr.name();
 
           if (strcmp(attr.name(), "name") == 0) {
-            mpPagingInfo->mPagingMode = string_to_EPagingMode(attr.value());
+            if (mpPagingInfo->isForGstage) {
+              mpPagingInfo->mPagingMode = string_to_EPagingMode("Sv48x4");
+            } else {
+              mpPagingInfo->mPagingMode = string_to_EPagingMode(attr.value());
+            }
           }
           else {
             LOG(fail) << "Unknown paging_mode attribute \'" << attr_name << "\'" << endl;

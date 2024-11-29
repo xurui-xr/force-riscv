@@ -32,8 +32,8 @@ using namespace std;
 
 namespace Force {
 
-  PageTableConstraint::PageTableConstraint(EMemBankType bankType)
-    : mMemoryBank(bankType), mpBaseUsable(nullptr), mpUsable(nullptr), mpAllocated(nullptr), mpBlockAllocated(nullptr), mPageTableSize(0), mpAllocatingNumber(nullptr), mAllocateOrder(false)
+  PageTableConstraint::PageTableConstraint(EMemBankType bankType, bool isForGstage)
+    : mMemoryBank(bankType), mpBaseUsable(nullptr), mpUsable(nullptr), mpAllocated(nullptr), mpBlockAllocated(nullptr), mPageTableSize(0), mpAllocatingNumber(nullptr), mAllocateOrder(false), isForGstage(isForGstage)
   {
   }
 
@@ -47,15 +47,13 @@ namespace Force {
 
   void PageTableConstraint::Setup(Generator* pGen, VmasControlBlock* pControlBlock)
   {
+    RootPageTable* PageTable = isForGstage ? pControlBlock->GetGstageRootPageTable() : pControlBlock->GetRootPageTable();
     mpBaseUsable = pControlBlock->GetPageTableUsableConstraint(mMemoryBank);
     mpUsable     = new ConstraintSet();
     mpAllocated  = new ConstraintSet();
     mpBlockAllocated = new ConstraintSet();
     mAllocateOrder = (Random::Instance()->Random32(0, 1) == 1);
-    uint64 bit_55_VA = 0x1ull << 55ull;
-    uint64 lo_table_size = pControlBlock->GetRootPageTable()->TableSize();
-    uint64 hi_table_size = pControlBlock->GetRootPageTable(bit_55_VA)->TableSize();
-    mPageTableSize = std::max(lo_table_size, hi_table_size);
+    mPageTableSize = PageTable->NextTableSize();
     const VariableModerator* var_mod = pGen->GetVariableModerator(EVariableType::Value);
     mpAllocatingNumber = var_mod->GetVariableSet()->FindVariable("Page tables number per block allocating");
     AllocateUsableBlock();
@@ -108,7 +106,7 @@ namespace Force {
 
     while (not allocated and (block_size > mPageTableSize))
     {
-      allocated = mem_manager->AllocatePageTableBlock(mMemoryBank, mPageTableSize, block_size, local_constr, block_start);
+      allocated = mem_manager->AllocatePageTableBlock(mMemoryBank, mPageTableSize, block_size, local_constr, block_start, isForGstage);
 
       if (not allocated) {
         block_size >>= 1; // halve.

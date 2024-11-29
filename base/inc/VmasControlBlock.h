@@ -22,6 +22,7 @@
 
 namespace Force {
 
+  class PagingInfo;
   class RootPageTable;
   class PageTable;
   class Page;
@@ -55,6 +56,7 @@ namespace Force {
     bool Validate(std::string& rErrMsg) const override; //!< Return true only if all initialized context are valid.
 
     virtual bool InitializeRootPageTable(VmAddressSpace* pVmas, RootPageTable* pRootTable); //!< Initialize root page table.
+    virtual bool InitializeGstageRootPageTable(VmAddressSpace* pVmas, RootPageTable* pRootTable); //!< Initialize G-stage root page table.
 
     virtual GenPageRequest* PhysicalRegionPageRequest(const PhysicalRegion* pPhysRegion, bool& rRegionCompatible) const { return nullptr; }         //!< Return page-request object for a given physical region type.
     virtual uint32          PteShift()                                             const { return 0; }               //!< Return PTE shift based on PTE size.
@@ -65,6 +67,7 @@ namespace Force {
 
     virtual bool              IsUpperVa(uint64 VA) const         { return false; } //!< Return true if VA falls in upper VA range
     virtual RootPageTable*    GetRootPageTable(uint64 VA = 0ull) const { return mpRootPageTable; } //!< Return the root table based on VA
+    virtual RootPageTable*    GetGstageRootPageTable(uint64 VA = 0ull) const { return mpGstageRootPageTable; } //!< Return the G-stage root table based on VA
     virtual EMemBankType      NextLevelTableMemoryBank(const PageTable* parentTable, const GenPageRequest& rPageReq) const; //!< Return memory bank of next level table.
     virtual EMemBankType      GetTargetMemoryBank(uint64 VA, GenPageRequest* pPageReq, const Page* pPage, const std::vector<ConstraintSet* >& rVmConstraints); //!< Gets the target memory bank based on default bank and choices
     virtual ConstraintSet*    GetPageTableExcludeRegion(uint64 VA, EMemBankType memBank, const std::vector<ConstraintSet* >& rVmConstraints) { return nullptr; }
@@ -76,7 +79,7 @@ namespace Force {
     virtual void GetAddressErrorRanges(std::vector<TranslationRange>& rRanges) const; //!< Obtain address errror ranges.
     virtual void CommitPageTable(uint64 VA, const PageTable* pParentTable, const TablePte* pTablePte, std::vector<ConstraintSet* >& rVmConstraints);
     virtual void CommitPage(const Page* pPage, std::vector<ConstraintSet* >& rVmConstraints);
-    virtual uint32 HighestVaBitCurrent(uint32 rangeNum = 0ul) const { return 63; } //!< Return current highest VA bit.
+    virtual uint32 HighestVaBitCurrent(uint32 rangeNum = 0ul, const PagingInfo* paging_info = NULL) const { return 63; } //!< Return current highest VA bit.
     virtual bool GetVmVaRanges(std::vector<VmVaRange* >& rVmVaRanges, uint64* pVA) const; //!< Return VmVaRange info.
     virtual ConstraintSet*    GetPageTableUsableConstraint(EMemBankType memBank) const { return nullptr; }; //!< Returns the page table physical usable constraint as determined by max phys address and variable.
     virtual std::vector<const PhysicalRegion* > FilterEssentialPhysicalRegions(const std::vector<PhysicalRegion* >& rPhysRegions) const; //!< Filter essential physical regions.
@@ -116,6 +119,7 @@ namespace Force {
     uint32              mAsid;               //!< Address space ID.
     bool                mWriteExecuteNever;  //!< Write execute never flag
     mutable RootPageTable* mpRootPageTable;  //!< Pointer to root level table address space.
+    mutable RootPageTable* mpGstageRootPageTable;  //!< Pointer to G-stage root level table address space.
     PagingChoicesAdapter* mpChoicesAdapter;  //!< Pointer to paging choices adapter.
     std::string mGranuleSuffix;              //!< Suffix granule string.
     std::string mPteIdentifierSuffix;        //!< PTE identifier suffix.

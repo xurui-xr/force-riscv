@@ -111,6 +111,7 @@ namespace Force {
     mutable Generator* mpGeneratorTemplate; //!< Pointer to the first Generator of this architecture created, used as template to create subsequent generators;
     mutable InstructionSet* mpInstructionSet; //!< Pointer to the instruction-set container shared by all Generators of the same type.
     mutable PagingInfo* mpPagingInfo; //!< Pointer to the paging info container shared by all Generators of the same type.
+    mutable PagingInfo* mpGstagePagingInfo; //!< Pointer to the Gstage paging info container shared by all Generators of the same type.
     SimAPI* mpSimAPI; //!< Pointer to the SimAPI object shared by all Generators of the same type.
     void* mpSimApiModule; //!< Pointer to the Simulator API module shared libary.
     mutable std::vector<ChoicesSet* > mChoicesSets; //!< Vector of pointers to ChoicesSet containers shared by all Generators of the same type.

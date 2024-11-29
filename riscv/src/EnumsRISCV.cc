@@ -608,6 +608,9 @@ namespace Force {
     case EPagingMode::Sv32: return "Sv32";
     case EPagingMode::Sv39: return "Sv39";
     case EPagingMode::Sv48: return "Sv48";
+    case EPagingMode::Sv32x4: return "Sv32x4";
+    case EPagingMode::Sv39x4: return "Sv39x4";
+    case EPagingMode::Sv48x4: return "Sv48x4";
     default:
       unknown_enum_value("EPagingMode", (unsigned char)(in_enum));
     }
@@ -622,14 +625,29 @@ namespace Force {
 
     switch (hash_value) {
     case 50:
-      validate(in_str, "Sv32", enum_type_name);
-      return EPagingMode::Sv32;
+      if (size > 4) {
+        validate(in_str, "Sv32x4", enum_type_name);
+        return EPagingMode::Sv32x4;
+      } else {
+        validate(in_str, "Sv32", enum_type_name);
+        return EPagingMode::Sv32; 
+      }
     case 56:
-      validate(in_str, "Sv48", enum_type_name);
-      return EPagingMode::Sv48;
+      if (size > 4) {
+        validate(in_str, "Sv48x4", enum_type_name);
+        return EPagingMode::Sv48x4;
+      } else {
+        validate(in_str, "Sv48", enum_type_name);
+        return EPagingMode::Sv48; 
+      }
     case 57:
-      validate(in_str, "Sv39", enum_type_name);
-      return EPagingMode::Sv39;
+      if (size > 4) {
+        validate(in_str, "Sv39x4", enum_type_name);
+        return EPagingMode::Sv39x4;
+      } else {
+        validate(in_str, "Sv39", enum_type_name);
+        return EPagingMode::Sv39; 
+      }
     case 101:
       validate(in_str, "Bare", enum_type_name);
       return EPagingMode::Bare;
@@ -647,14 +665,29 @@ namespace Force {
 
     switch (hash_value) {
     case 50:
-      okay = (in_str == "Sv32");
-      return EPagingMode::Sv32;
+      if (size > 4) {
+        okay = (in_str == "Sv32x4");
+        return EPagingMode::Sv32x4;
+      } else {
+        okay = (in_str == "Sv32");
+        return EPagingMode::Sv32;
+      }
     case 56:
-      okay = (in_str == "Sv48");
-      return EPagingMode::Sv48;
+      if (size > 4) {
+        okay = (in_str == "Sv48x4");
+        return EPagingMode::Sv48x4;
+      } else {
+        okay = (in_str == "Sv48");
+        return EPagingMode::Sv48;
+      }
     case 57:
-      okay = (in_str == "Sv39");
-      return EPagingMode::Sv39;
+      if (size > 4) {
+        okay = (in_str == "Sv39x4");
+        return EPagingMode::Sv39x4;
+      } else {
+        okay = (in_str == "Sv39");
+        return EPagingMode::Sv39;
+      }
     case 101:
       okay = (in_str == "Bare");
       return EPagingMode::Bare;

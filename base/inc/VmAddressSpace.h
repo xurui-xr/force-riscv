@@ -69,6 +69,7 @@ namespace Force {
     uint64 MaxVirtualAddress() const override; //!< Get the max virtual address supported
     uint64 MaxPhysicalAddress() const override; //!< Get the max physical address supported
     bool InitializeRootPageTable(RootPageTable* pRootTable); //!< Initialize the VmAddressSpace object.
+    bool InitializeGstageRootPageTable(RootPageTable* pRootTable); //!< Initialize the VmAddressSpace object.
     bool CompatiblePageTableContext(const VmAddressSpace* pOtherVmas) const; //!< Return true if vmas passed in has compatible page table context with this vmas
     uint32 Asid() const; //!< Return the ASID of the address space.
     const std::string ControlBlockInfo() const; //!< Return contol block info as a string.
@@ -132,6 +133,7 @@ namespace Force {
     std::vector<Page* > mNoTablePages; //!< The pages that is not part of the page table hierarch.
     std::vector<ConstraintSet* > mVmConstraints; //!< Container of all the applicable VM constraints.
     std::vector<PageTableConstraint* > mPageTableConstraints; //!< Pointer to page table related constraints.
+    std::vector<PageTableConstraint* > mGstagePageTableConstraints; //!< Pointer to G-stage page table related constraints.
     bool mFlatMapped;
 
     friend class VmPagingMapper;

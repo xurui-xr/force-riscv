@@ -39,7 +39,7 @@ namespace Force {
     PteAttribute* PteAttributeInstance(EPteAttributeType attrType) const override; //!< Return an appropriate PteAttribute instance.
     void SetupVmConstraints(std::vector<ConstraintSet* >& rVmConstraints) const override; //!< Setup RISCV VM Constraints.
     VmContext* CreateVmContext() const override; //!< Setup VmContext.
-    void CreatePageTableConstraints(std::vector<PageTableConstraint* >& rPageTableConstraints) const override; //!< Setup Page Table constraints.
+    void CreatePageTableConstraints(std::vector<PageTableConstraint* >& rPageTableConstraints, bool isForGstage) const override; //!< Setup Page Table constraints.
     VmPaMapper* VmPaMapperInstance(VmAddressSpace* pAddressSpace) const override; //!< Return an RISCV VmPaMapper instance.
     EPrivilegeLevelType GetPrivilegeLevel() const override; //!< Return privilege level of Regime
     void GetRegisterContext(std::vector<std::string>& rRegNames, bool pagingEnabled) const override; //!< Update rRegNames with list of context register names

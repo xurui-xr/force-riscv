@@ -64,7 +64,7 @@ using namespace std;
 namespace Force {
 
   Generator::Generator()
-    : Object(), mThreadId(0), mMaxInstructions(0), mMaxPhysicalVectorLen(0), mpArchInfo(nullptr), mpInstructionSet(nullptr), mpPagingInfo(nullptr), mpMemoryManager(nullptr), mpSimAPI(nullptr), mpVirtualMemoryInitializer(nullptr), mpRegisterFile(nullptr), mpVmManager(nullptr), mpRequestQueue(nullptr),
+    : Object(), mThreadId(0), mMaxInstructions(0), mMaxPhysicalVectorLen(0), mpArchInfo(nullptr), mpInstructionSet(nullptr), mpPagingInfo(nullptr), mpGstagePagingInfo(nullptr), mpMemoryManager(nullptr), mpSimAPI(nullptr), mpVirtualMemoryInitializer(nullptr), mpRegisterFile(nullptr), mpVmManager(nullptr), mpRequestQueue(nullptr),
       mpThreadInstructionResults(nullptr), mpRecordArchive(nullptr), mpBootOrder(nullptr), mpGenMode(nullptr), mpGenPC(nullptr), mpReExecutionManager(nullptr), mpDependence(nullptr), mpRegisteredSetModifier(nullptr), mpExceptionRecordManager(nullptr), mpChoicesModerators(nullptr),
       mpConditionSet(nullptr), mpPageRequestRegulator(nullptr), mpAddressFilteringRegulator(nullptr), mpBntHookManager(nullptr), mpBntNodeManager(nullptr), mpAddressTableManager(nullptr), mAgents(), mGenStateValues(), mGenStateStrings(), mPreAmbleRequests(), mPostAmbleRequests(),
       mPostInstrStepRequests(), mVariableModerators()
@@ -86,7 +86,7 @@ namespace Force {
   }
 
   Generator::Generator(uint64 alignmentMask)
-    : Object(), mThreadId(0), mMaxInstructions(0), mMaxPhysicalVectorLen(0), mpArchInfo(nullptr), mpInstructionSet(nullptr), mpPagingInfo(nullptr), mpMemoryManager(nullptr), mpSimAPI(nullptr), mpVirtualMemoryInitializer(nullptr), mpRegisterFile(nullptr), mpVmManager(nullptr), mpRequestQueue(nullptr),
+    : Object(), mThreadId(0), mMaxInstructions(0), mMaxPhysicalVectorLen(0), mpArchInfo(nullptr), mpInstructionSet(nullptr), mpPagingInfo(nullptr), mpGstagePagingInfo(nullptr), mpMemoryManager(nullptr), mpSimAPI(nullptr), mpVirtualMemoryInitializer(nullptr), mpRegisterFile(nullptr), mpVmManager(nullptr), mpRequestQueue(nullptr),
       mpThreadInstructionResults(nullptr), mpRecordArchive(nullptr), mpBootOrder(nullptr), mpGenMode(nullptr), mpGenPC(nullptr), mpReExecutionManager(nullptr), mpDependence(nullptr), mpRegisteredSetModifier(nullptr), mpExceptionRecordManager(nullptr), mpChoicesModerators(nullptr),
       mpConditionSet(nullptr), mpPageRequestRegulator(nullptr), mpAddressFilteringRegulator(nullptr), mpBntHookManager(nullptr), mpBntNodeManager(nullptr), mpAddressTableManager(nullptr), mAgents(), mGenStateValues(), mGenStateStrings(), mPreAmbleRequests(), mPostAmbleRequests(),
       mPostInstrStepRequests(), mVariableModerators()
@@ -108,7 +108,7 @@ namespace Force {
   }
 
   Generator::Generator(const Generator& rOther)
-    : Object(rOther), mThreadId(0), mMaxInstructions(rOther.mMaxInstructions), mMaxPhysicalVectorLen(rOther.mMaxPhysicalVectorLen), mpArchInfo(rOther.mpArchInfo), mpInstructionSet(rOther.mpInstructionSet), mpPagingInfo(rOther.mpPagingInfo), mpMemoryManager(rOther.mpMemoryManager), mpSimAPI(rOther.mpSimAPI),
+    : Object(rOther), mThreadId(0), mMaxInstructions(rOther.mMaxInstructions), mMaxPhysicalVectorLen(rOther.mMaxPhysicalVectorLen), mpArchInfo(rOther.mpArchInfo), mpInstructionSet(rOther.mpInstructionSet), mpPagingInfo(rOther.mpPagingInfo), mpGstagePagingInfo(rOther.mpGstagePagingInfo), mpMemoryManager(rOther.mpMemoryManager), mpSimAPI(rOther.mpSimAPI),
       mpVirtualMemoryInitializer(nullptr), mpRegisterFile(nullptr), mpVmManager(nullptr), mpRequestQueue(nullptr), mpThreadInstructionResults(nullptr), mpRecordArchive(nullptr), mpBootOrder(nullptr), mpGenMode(nullptr), mpGenPC(nullptr), mpReExecutionManager(nullptr), mpDependence(nullptr),
       mpRegisteredSetModifier(nullptr), mpExceptionRecordManager(nullptr), mpChoicesModerators(nullptr), mpConditionSet(nullptr), mpPageRequestRegulator(nullptr), mpAddressFilteringRegulator(nullptr), mpBntHookManager(nullptr), mpBntNodeManager(), mpAddressTableManager(nullptr),
       mAgents(), mGenStateValues(), mGenStateStrings(), mPreAmbleRequests(), mPostAmbleRequests(), mPostInstrStepRequests(), mVariableModerators()

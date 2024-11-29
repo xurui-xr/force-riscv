@@ -158,6 +158,9 @@ namespace Force {
     Sv32 = 1,
     Sv39 = 2,
     Sv48 = 3,
+    Sv32x4 = 4,
+    Sv39x4 = 5,
+    Sv48x4 = 6,
   };
   extern unsigned char EPagingModeSize;
   extern const std::string EPagingMode_to_string(EPagingMode in_enum); //!< Get string name for enum.

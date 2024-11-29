@@ -53,7 +53,7 @@ namespace Force {
     virtual PteAttribute* PteAttributeInstance(EPteAttributeType attrType) const = 0; //!< Return an appropriate PteAttribute instance.
     virtual void SetupVmConstraints(std::vector<ConstraintSet* >& rVmConstraints) const = 0; //!< Setup VM Constraints.
     virtual VmContext* CreateVmContext() const = 0; //!< Setup VmContext.
-    virtual void CreatePageTableConstraints(std::vector<PageTableConstraint* >& rPageTableConstraints) const = 0; //!< Setup Page Table constraints.
+    virtual void CreatePageTableConstraints(std::vector<PageTableConstraint* >& rPageTableConstraints, bool isForGstage) const = 0; //!< Setup Page Table constraints.
     virtual VmPaMapper* VmPaMapperInstance(VmAddressSpace* pAddressSpace) const = 0; //!< Create an appropriate VmPaMapper instance.
     virtual EPrivilegeLevelType GetPrivilegeLevel() const = 0; //!< Return privilege level of Regime
     virtual void GetRegisterContext(std::vector<std::string>& rRegNames, bool pagingEnabled) const = 0; //!< Update rRegNames with list of context register names

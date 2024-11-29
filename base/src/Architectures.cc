@@ -27,7 +27,7 @@ using namespace std;
 namespace Force {
 
   ArchInfo::ArchInfo(const std::string& name)
-    : mName(name), mpGeneratorTemplate(nullptr), mpInstructionSet(nullptr), mpPagingInfo(nullptr), mpSimAPI(nullptr), mpSimApiModule(nullptr), mChoicesSets(), mVariableSets(), mMemoryBanks(), mInstructionFiles(), mRegisterFiles(), mChoicesFiles(), mPagingFiles(), mVariableFiles(),
+    : mName(name), mpGeneratorTemplate(nullptr), mpInstructionSet(nullptr), mpPagingInfo(nullptr), mpGstagePagingInfo(nullptr), mpSimAPI(nullptr), mpSimApiModule(nullptr), mChoicesSets(), mVariableSets(), mMemoryBanks(), mInstructionFiles(), mRegisterFiles(), mChoicesFiles(), mPagingFiles(), mVariableFiles(),
       mDefaultIClass(), mDefaultPteClass(), mDefaultPteAttributeClass(), mDefaultOperandClasses(), mRegisterClasses(), mSimulatorApiModule(), mSimulatorDLL(), mSimulatorStandalone(), mSimulatorConfigString()
   {
 
@@ -42,6 +42,7 @@ namespace Force {
     mpGeneratorTemplate = nullptr;
     mpInstructionSet = nullptr;
     mpPagingInfo = nullptr;
+    mpGstagePagingInfo = nullptr;
     mpSimAPI = nullptr;
     mpSimApiModule = nullptr;
   }

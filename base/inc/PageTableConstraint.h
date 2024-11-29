@@ -34,7 +34,7 @@ namespace Force {
 
   class PageTableConstraint {
   public:
-    explicit PageTableConstraint(EMemBankType bankType); //!< Constructor with memory bank type given.
+    explicit PageTableConstraint(EMemBankType bankType, bool isForGstage); //!< Constructor with memory bank type given.
     ~PageTableConstraint(); //!< Destructor.
 
     ASSIGNMENT_OPERATOR_ABSENT(PageTableConstraint); //!< Absent operator "=".
@@ -55,6 +55,7 @@ namespace Force {
     uint64 mPageTableSize;        //!< Page table granule size.
     const Variable* mpAllocatingNumber; //!< Number of allocating page tables.
     bool mAllocateOrder;          //!< Indicate if we allocate page table from the top of the range.
+    bool isForGstage;             // PageTableConstraint is for G-stage.
   };
 
 }

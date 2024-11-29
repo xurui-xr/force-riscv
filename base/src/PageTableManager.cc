@@ -35,9 +35,10 @@ using namespace std;
 namespace Force
 {
 
-  PageTableManager::PageTableManager(EMemBankType bankType) : mRootPageTables(), mVmConstraints(), mBankType(bankType), mpPageTableAllocator(nullptr)
+  PageTableManager::PageTableManager(EMemBankType bankType) : mRootPageTables(), mVmConstraints(), mBankType(bankType), mpPageTableAllocator(nullptr), mpGstagePageTableAllocator(nullptr)
   {
     mpPageTableAllocator = new PageTableAllocator(bankType);
+    mpGstagePageTableAllocator = new PageTableAllocator(bankType);
   }
 
   PageTableManager::~PageTableManager()
@@ -53,6 +54,7 @@ namespace Force
     }
 
     delete mpPageTableAllocator;
+    delete mpGstagePageTableAllocator;
   }
 
   bool PageTableManager::AllocateRootPageTable(VmAddressSpace* pVmas)
@@ -80,6 +82,11 @@ namespace Force
       }
       return ret_val;
     }
+  }
+
+  bool PageTableManager::AllocateGstageRootPageTable(VmAddressSpace* pVmas)
+  {
+    return pVmas->InitializeGstageRootPageTable(nullptr);
   }
 
   bool PageTableManager::NewRootPageTable(VmAddressSpace* pVmas)

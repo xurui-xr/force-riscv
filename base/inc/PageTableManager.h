@@ -55,11 +55,18 @@ namespace Force
     void CommitPageTable(PageTable* pTable, const VmAddressSpace* pVmas); //!< add page table and link to vmas
 
     bool AllocateRootPageTable(VmAddressSpace* pVmas); //!< allocate a new or alias an existing root page table
+    bool AllocateGstageRootPageTable(VmAddressSpace* pVmas); //!< allocate a new G-stage root page table
     void CommitRootPageTable(RootPageTable* pRootTable); //!< add a newly created root page table to the sorted vector of root tables
 
     //Interfaces to PageTableAllocator functions
     const ConstraintSet* Allocated() const { return mpPageTableAllocator->Allocated(); } //!< Interface to get the allocated constraint set from PTA
-    bool AllocatePageTableBlock(uint64 align, uint64 size, const ConstraintSet* usable, const ConstraintSet* range, uint64& start) { return mpPageTableAllocator->AllocatePageTableBlock(align, size, usable, range, start); }
+    bool AllocatePageTableBlock(uint64 align, uint64 size, const ConstraintSet* usable, const ConstraintSet* range, uint64& start, bool isGstage) {
+      if (isGstage) {
+        return mpPageTableAllocator->AllocatePageTableBlock(align, size, usable, range, start);
+      } else {
+        return mpGstagePageTableAllocator->AllocatePageTableBlock(align, size, usable, range, start);
+      }
+    }
   private:
     bool NewRootPageTable(VmAddressSpace* pVmas); //!< function to attempt to create a new root page table for a given context.
     bool AliasRootPageTable(VmAddressSpace* pVmas); //!< function to attempt to alias an existing root table based on context matching the address spaces
@@ -76,6 +83,7 @@ namespace Force
     EMemBankType mBankType;
 
     PageTableAllocator* mpPageTableAllocator;
+    PageTableAllocator* mpGstagePageTableAllocator;
 
     ASSIGNMENT_OPERATOR_ABSENT(PageTableManager);
     COPY_CONSTRUCTOR_ABSENT(PageTableManager);

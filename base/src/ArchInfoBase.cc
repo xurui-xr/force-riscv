@@ -61,6 +61,8 @@ namespace Force {
     mpInstructionSet = nullptr;
     delete mpPagingInfo;
     mpPagingInfo = nullptr;
+    delete mpGstagePagingInfo;
+    mpGstagePagingInfo = nullptr;
 
     if (nullptr != mpSimAPI) {
       mpSimAPI->Terminate();
@@ -92,13 +94,16 @@ namespace Force {
 
       mpInstructionSet = new InstructionSet();
       mpInstructionSet->Setup(*this);
-      mpPagingInfo = new PagingInfo();
+      mpPagingInfo = new PagingInfo(false);
       mpPagingInfo->Setup(*this);
+      mpGstagePagingInfo = new PagingInfo(true);
+      mpGstagePagingInfo->Setup(*this);
 
       mpGeneratorTemplate = InstantiateGenerator();
       mpGeneratorTemplate->mpArchInfo = this;
       mpGeneratorTemplate->mpInstructionSet = mpInstructionSet;
       mpGeneratorTemplate->mpPagingInfo = mpPagingInfo;
+      mpGeneratorTemplate->mpGstagePagingInfo = mpGstagePagingInfo;
       mpGeneratorTemplate->mpSimAPI = mpSimAPI;
       mpGeneratorTemplate->mpMemoryManager = MemoryManager::Instance();
 

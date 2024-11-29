@@ -34,6 +34,9 @@ namespace Force {
       .value("Sv32", EPagingMode::Sv32)
       .value("Sv39", EPagingMode::Sv39)
       .value("Sv48", EPagingMode::Sv48)
+      .value("Sv32x4", EPagingMode::Sv32x4)
+      .value("Sv39x4", EPagingMode::Sv39x4)
+      .value("Sv48x4", EPagingMode::Sv48x4)
       ;
   }
 

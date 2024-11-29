@@ -178,12 +178,12 @@ namespace Force {
     return nullptr;
   }
 
-  void VmFactoryRISCV::CreatePageTableConstraints(std::vector<PageTableConstraint* >& rPageTableConstraints) const
+  void VmFactoryRISCV::CreatePageTableConstraints(std::vector<PageTableConstraint* >& rPageTableConstraints, bool isForGstage) const
   {
     for (EMemBankTypeBaseType i = 0; i < EMemBankTypeSize; ++ i)
     {
       LOG(info) << "{VmFactoryRISCV::CreatePageTableConstraints} instantiating " << EMemBankType_to_string(EMemBankType(i)) << " constraint." << endl;
-      rPageTableConstraints.push_back(new PageTableConstraint(EMemBankType(i)));
+      rPageTableConstraints.push_back(new PageTableConstraint(EMemBankType(i), isForGstage));
     }
   }
 
