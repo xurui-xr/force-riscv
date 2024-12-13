@@ -192,6 +192,78 @@ namespace Force {
     va_req->mVA = ret_va;
   }
 
+  void GenVirtualMemoryAgent::GenGVA()
+  {
+    uint64 ret_va = 0;
+    auto va_req = dynamic_cast<GenVaRequest* > (mpVirtualMemoryRequest);
+    bool is_instr = (va_req->DataType() == EMemDataType::Instruction);
+    if (is_instr and va_req->SharedMemory())
+    {
+      LOG(fail) << "{GenVirtualMemoryAgent::GenVA} instruction memory cannot be designated as shared." << endl;
+      FAIL("shared-instruction-memory");
+    }
+
+    EMemAccessType va_access_type = EMemAccessType::ReadWrite;
+
+    if (is_instr)
+    {
+      va_access_type = EMemAccessType::Read;
+    }
+
+    //VmManager* vm_manager = mpGenerator->GetGuestVmManager();
+    VmManager* vm_manager = mpGenerator->GetVmManager();
+    VmMapper* vm_mapper = vm_manager->CurrentVmMapper();
+
+    if (va_req->VmSpecified())
+    {
+      std::unique_ptr<VmInfo> vm_info_storage(vm_manager->VmInfoInstance()); // to release vm_info when done.
+
+      vm_info_storage.get()->SetPrivilegeLevel(uint32(va_req->PrivilegeLevel()));
+      vm_info_storage.get()->GetOtherStates(*mpGenerator); // obtain other states from the current PE states.
+
+      bool valid_regime = false;
+      EVmRegimeType regime_type = vm_info_storage.get()->RegimeType(&valid_regime);
+      if (valid_regime)
+      {
+        LOG(info) << "{GenVirtualMemoryAgent::GenGVA} target VM info: " << vm_info_storage.get()->ToString() << " regime type: " << EVmRegimeType_to_string(regime_type) << endl;
+        vm_mapper = vm_manager->GetVmMapper(*vm_info_storage.get());
+        vm_mapper->Initialize();
+      }
+      else
+      {
+        LOG(notice) << "{GenVirtualMemoryAgent::GenGVA} target VM not valid, VM info: " << vm_info_storage.get()->ToString() << ". Use current VmRegime." << endl;
+      }
+    }
+
+    std::unique_ptr<GenPageRequest> local_page_req(vm_mapper->GenPageRequestRegulated(is_instr, va_access_type));
+    SetCommonPageRequestAttributes(*va_req, local_page_req.get());
+
+    local_page_req->SetGenBoolAttribute(EPageGenBoolAttrType::ForceAlias, va_req->ForceAlias());
+    local_page_req->SetAttributeValue(EPageRequestAttributeType::AliasPageId, va_req->PhysPageId());
+
+    VaGenerator va_gen(vm_mapper, local_page_req.get());
+    ret_va = va_gen.GenerateAddress(va_req->Align(), va_req->Size(), is_instr, va_access_type, va_req->MemoryRangesConstraint());
+
+    // if (va_req->SharedMemory()) {
+    //   PhysicalPageSplitter page_splitter(vm_mapper);
+    //   PhysicalPageSplit page_split = page_splitter.GetPhysicalPageSplit(ret_va, va_req->Size());
+
+    //   MemoryManager* mem_man = mpGenerator->GetMemoryManager();
+    //   mem_man->MarkShared(PaTuple(page_split.mPa1, EMemBankTypeBaseType(page_split.mBank1)), page_split.mSize1);
+    //   if (page_split.mSize2 > 0) {
+    //     mem_man->MarkShared(PaTuple(page_split.mPa2, EMemBankTypeBaseType(page_split.mBank2)), page_split.mSize2);
+    //   }
+    // }
+
+    const AddressTagging* addr_tagging = vm_mapper->GetAddressTagging();
+    if (va_req->Tag() > 255) {
+      // No Tag Specified
+      ret_va = addr_tagging->TagAddressRandomly(ret_va, is_instr);
+    }
+    else ret_va = addr_tagging->TagAddress(ret_va, va_req->Tag(), is_instr);
+    va_req->mVA = ret_va;
+  }
+
   void GenVirtualMemoryAgent::GenVMVA()
   {
     auto vm_va_req = dynamic_cast<GenVmVaRequest* > (mpVirtualMemoryRequest);

@@ -59,7 +59,7 @@ namespace Force {
     virtual bool InitializeGstageRootPageTable(VmAddressSpace* pVmas, RootPageTable* pRootTable); //!< Initialize G-stage root page table.
 
     virtual GenPageRequest* PhysicalRegionPageRequest(const PhysicalRegion* pPhysRegion, bool& rRegionCompatible) const { return nullptr; }         //!< Return page-request object for a given physical region type.
-    virtual uint32          PteShift()                                             const { return 0; }               //!< Return PTE shift based on PTE size.
+    virtual uint32          PteShift(const PagingInfo* paging_info)                                             const { return 0; }               //!< Return PTE shift based on PTE size.
     virtual ConstraintSet*  InitialVirtualConstraint()                             const; //!< Get initial constraint set from control block info
 
     uint32              Asid()               const  { return mAsid; }               //!< Return ASID.

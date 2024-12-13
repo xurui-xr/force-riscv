@@ -52,6 +52,7 @@
 #include "VmPaMapper.h"
 #include "VmUtils.h"
 #include "VmasControlBlock.h"
+#include "VmManager.h"
 
 using namespace std;
 
@@ -64,22 +65,39 @@ namespace Force {
 
 
   VmAddressSpace::VmAddressSpace(const VmFactory* pFactory, VmasControlBlock* pVmasCtlrBlock)
-    : VmMapper(pFactory), Object(), mpControlBlock(pVmasCtlrBlock), mpLookUpPage(nullptr), mpDefaultPageRequest(nullptr),  mpVirtualUsable(nullptr), mPages(), mPhysicalRegions(), mNoTablePages(), mVmConstraints(), mPageTableConstraints(), mGstagePageTableConstraints(), mFlatMapped(false)
+    : VmMapper(pFactory), Object(), mpControlBlock(pVmasCtlrBlock), mpLookUpPage(nullptr), mpDefaultPageRequest(nullptr),  mpVirtualUsable(nullptr), mPages(), mGuestPages(), mPhysicalRegions(), mNoTablePages(), mVmConstraints(), mPageTableConstraints(), mGstagePageTableConstraints(), mFlatMapped(false)
   {
 
   }
 
+  GuestVmAddressSpace::GuestVmAddressSpace(const VmFactory* pFactory, VmasControlBlock* pVmasCtlrBlock)
+    : VmAddressSpace(pFactory, pVmasCtlrBlock)
+    {
+
+    }
+
   VmAddressSpace::VmAddressSpace()
-    : VmMapper(), Object(), mpControlBlock(nullptr), mpLookUpPage(nullptr), mpDefaultPageRequest(nullptr),  mpVirtualUsable(nullptr), mPages(), mPhysicalRegions(), mNoTablePages(), mVmConstraints(), mPageTableConstraints(), mGstagePageTableConstraints(), mFlatMapped(false)
+    : VmMapper(), Object(), mpControlBlock(nullptr), mpLookUpPage(nullptr), mpDefaultPageRequest(nullptr),  mpVirtualUsable(nullptr), mPages(), mGuestPages(), mPhysicalRegions(), mNoTablePages(), mVmConstraints(), mPageTableConstraints(), mGstagePageTableConstraints(), mFlatMapped(false)
+  {
+  }
+
+  GuestVmAddressSpace::GuestVmAddressSpace()
+    : VmAddressSpace()
   {
   }
 
   VmAddressSpace::VmAddressSpace(const VmAddressSpace& rOther)
-    : VmMapper(rOther), Object(rOther), mpControlBlock(nullptr), mpLookUpPage(nullptr), mpDefaultPageRequest(nullptr),  mpVirtualUsable(nullptr), mPages(), mPhysicalRegions(), mNoTablePages(), mVmConstraints(), mPageTableConstraints(), mGstagePageTableConstraints(), mFlatMapped(false)
+    : VmMapper(rOther), Object(rOther), mpControlBlock(nullptr), mpLookUpPage(nullptr), mpDefaultPageRequest(nullptr),  mpVirtualUsable(nullptr), mPages(), mGuestPages(), mPhysicalRegions(), mNoTablePages(), mVmConstraints(), mPageTableConstraints(), mGstagePageTableConstraints(), mFlatMapped(false)
   {
     if (nullptr != rOther.mpControlBlock) {
       mpControlBlock = dynamic_cast<VmasControlBlock* > (rOther.mpControlBlock->Clone());
     }
+  }
+
+  GuestVmAddressSpace::GuestVmAddressSpace(const GuestVmAddressSpace& rOther)
+    : VmAddressSpace(rOther)
+  {
+
   }
 
   VmAddressSpace::~VmAddressSpace()
@@ -103,6 +121,11 @@ namespace Force {
     for (auto vm_constr : mVmConstraints) {
       delete vm_constr;
     }
+  }
+
+  GuestVmAddressSpace::~GuestVmAddressSpace()
+  {
+
   }
 
   void VmAddressSpace::Setup(Generator* gen)
@@ -334,6 +357,56 @@ namespace Force {
     //LOG(debug) << "{VmAddressSpace::UpdateVirtualUsableByPage} end vir_usable: " << cset_s_vir_usable.ToDebugString() << endl;
   }
 
+  void GuestVmAddressSpace::UpdateVirtualUsableByPage(const Page* pPage)
+  {
+    if (!mpVirtualUsable->IsInitialized())
+    {
+      LOG(fail) << "{GuestVmAddressSpace::UpdateVirtualUsableByPage} calling with empty virtual constraints" << endl;
+      FAIL("update-vir-usable-by-page-empty-constr");
+    }
+
+    LOG(debug) << "{GuestVmAddressSpace::UpdateVirtualUsableByPage} page v_lower=0x" << hex << pPage->Lower() << " v_upper=0x"
+               << pPage->Upper() << " p_lower=0x" << pPage->PhysicalLower() << " p_upper=0x" << pPage->PhysicalUpper()
+               << " p_bank=" << EMemBankType_to_string(pPage->MemoryBank()) << endl;
+
+    //auto mem_manager   = mpGenerator->GetGuestMemoryManager();
+    auto mem_manager   = mpGenerator->GetMemoryManager();
+    auto mem_bank      = mem_manager->GetMemoryBank(uint32(pPage->MemoryBank()));
+    auto usable_constr = mem_bank->Usable();
+
+    auto cset_s_phys_usable = ConstraintSetSerializer(*usable_constr, FORCE_CSET_DEFAULT_PERLINE);
+    auto cset_s_vir_usable = ConstraintSetSerializer(*mpVirtualUsable->Usable(), FORCE_CSET_DEFAULT_PERLINE);
+
+    LOG(debug) << "Guest UVUBP phys_usable_constr: " << cset_s_phys_usable.ToDebugString() << endl;
+    LOG(debug) << "Guest UVUBP vir_usable_constr: " << cset_s_vir_usable.ToDebugString() << endl;
+
+    //we only need to modify the existing constraints if the page is partially usable
+    if (not usable_constr->ContainsRange(pPage->PhysicalLower(), pPage->PhysicalUpper())) {
+      //get any physical usable space in the page's physical address range
+      ConstraintSet phys_page_usable;
+      bool any_page_usable = usable_constr->CopyInRange(pPage->PhysicalLower(), pPage->PhysicalUpper(), phys_page_usable);
+
+      LOG(debug) << "{GuestVmAddressSpace::UpdateVirtualUsableByPage} any_page_usable=" << any_page_usable << endl;
+      //add any usable physical space back into virtual usable, translating physical to virtual before adding back in
+      if (any_page_usable) {
+        auto cset_s_phys_page_usable = ConstraintSetSerializer(phys_page_usable, FORCE_CSET_DEFAULT_PERLINE);
+        LOG(debug) << "{GuestVmAddressSpace::UpdateVirtualUsableByPage} phys_page_usable: " << cset_s_phys_page_usable.ToDebugString() << endl;
+        uint64 mask  = (pPage->PageSize() - 0x1ull);
+        uint64 frame = pPage->Lower() & (~mask);
+        //LOG(debug) << "{VmAddressSpace::UpdateVirtualUsableByPage} mask=0x" << mask << " frame=0x" << frame << endl;
+        phys_page_usable.Translate(mask, frame);
+        //LOG(debug) << "{VmAddressSpace::UpdateVirtualUsableByPage} post translate phys_page_usable:" << cset_s_phys_page_usable.ToDebugString() << endl;
+
+        mpVirtualUsable->ReplaceUsableInRange(pPage->Lower(), pPage->Upper(), phys_page_usable);
+      }
+      else {
+        //sub whole page range from virtual constraints
+        mpVirtualUsable->MarkUsed(pPage->Lower(), pPage->Upper());
+      }
+    }
+
+  }
+
   Page* VmAddressSpace::PageInstance() const
   {
     return new Page();
@@ -392,6 +465,22 @@ namespace Force {
 
   void VmAddressSpace::MapEssentialPhysicalRegions()
   {
+    auto mem_manager = mpGenerator->GetMemoryManager();
+    auto region_vec = mpControlBlock->FilterEssentialPhysicalRegions(mem_manager->GetPhysicalRegions());
+
+    for (auto phys_region : region_vec)
+    {
+      bool region_compatible = MapPhysicalRegion(phys_region);
+      if (not region_compatible) {
+        LOG(fail) << "{VmAddressSpace::MapEssentialPhysicalRegions} incompatible region: " << phys_region->ToString() << endl;
+        FAIL("mapping-incompatible-physical-region");
+      }
+    }
+  }
+
+  void GuestVmAddressSpace::MapEssentialPhysicalRegions()
+  {
+    //auto mem_manager = mpGenerator->GetGuestMemoryManager();
     auto mem_manager = mpGenerator->GetMemoryManager();
     auto region_vec = mpControlBlock->FilterEssentialPhysicalRegions(mem_manager->GetPhysicalRegions());
 
@@ -475,6 +564,50 @@ namespace Force {
       }
       size_remaining -= map_size;
       map_va += map_size;
+    }
+    while (size_remaining);
+
+    MapPhysicalRegions();
+
+    return any_new_page_alloc;
+  }
+
+  bool VmAddressSpace::MapAddressRangeForGpa(uint64 GPA, uint64 size, bool isInstr, const GenPageRequest* pPageReq)
+  {
+    if (size == 0) {
+      LOG(fail) << "{VmAddressSpace::MapAddressRangeForGpa} address range size cannot be 0." << endl;
+      FAIL("mapping-range-with-size-0");
+    }
+
+    bool any_new_page_alloc = false;
+    uint64 map_gpa = GPA;
+    uint64 size_remaining = size;
+
+    do {
+      LOG(info) << "{VmAddressSpace::MapAddressRangeForGpa} mapping address 0x" << hex << map_gpa << " remaining_size 0x" << size_remaining << endl;
+
+      bool new_page_alloc = false;
+      const Page* map_page = nullptr;
+
+      try
+      {
+        map_page = MapAddressForGpa(map_gpa, size_remaining, isInstr, pPageReq, new_page_alloc);
+      }
+      catch (const PagingError& err)
+      {
+        LOG(fail) << "{VmAddressSpace::MapAddressRangeForGpa} Unable to map address range GPA=0x" << hex << GPA << " size=0x" << size << " Paging Error: " << err.what() << endl;
+        FAIL("paging-error-in-map-address-range");
+      }
+
+      any_new_page_alloc |= new_page_alloc;
+
+      uint64 map_size = (map_page->Upper() - map_gpa + 1);
+      if (map_size >= size_remaining)
+      {
+        break;
+      }
+      size_remaining -= map_size;
+      map_gpa += map_size;
     }
     while (size_remaining);
 
@@ -621,6 +754,25 @@ namespace Force {
     return nullptr;
   }
 
+  const Page* VmAddressSpace::GetGuestPage(uint64 GPA) const
+  {
+    mpLookUpPage->SetBoundary(GPA, GPA);
+
+    auto last_iter = mGuestPages.end();
+    auto find_iter = lower_bound(mGuestPages.begin(), last_iter, mpLookUpPage, compare_pages);
+    if (find_iter == last_iter) {
+      // no match found.
+      return nullptr;
+    }
+
+    if ((*find_iter)->Lower() <= GPA) {
+      //LOG(debug) << "{VmAddressSpace::GetGuestPage} found page " << (*find_iter)->ToString() << " for 0x" << hex << GPA << endl;
+      return (*find_iter);
+    }
+
+    return nullptr;
+  }
+
   const Page* VmAddressSpace::GetPageWithAssert(uint64 VA) const
   {
     mpLookUpPage->SetBoundary(VA, VA); // same value for lower and upper boundaries.
@@ -688,6 +840,81 @@ namespace Force {
 
     const Page* page_obj = SetupPageMapping(VA, size, is_sys_page, updated_page_req);
     CommitPage(page_obj, size);
+
+    newAlloc = true; //set flag for new page allocation on successful commit
+    return page_obj;
+  }
+
+  const Page* VmAddressSpace::MapAddressForGpa(uint64 VA, uint64 size, bool isInstr, const GenPageRequest* pPageReq, bool& newAlloc)
+  {
+    const Page* map_page = GetGuestPage(VA);
+    if (nullptr != map_page)
+    {
+      return map_page;
+    }
+
+    if (nullptr == pPageReq)
+    {
+      pPageReq = DefaultPageRequest(isInstr);
+    }
+
+    bool is_sys_page = false;
+    const ConstraintSet* sys_page_choice = pPageReq->PteAttributeConstraint(EPteAttributeType::SystemPage);
+    if (sys_page_choice != nullptr)
+    {
+      is_sys_page = (sys_page_choice->ChooseValue());
+    }
+
+    GenPageRequest* updated_page_req = pPageReq->Clone();
+    unique_ptr<GenPageRequest> page_req_storage(updated_page_req); // delete object when going out of scope.
+
+    const Page* page_obj = SetupPageMappingForGpa(VA, size, is_sys_page, updated_page_req);
+    CommitGuestPage(page_obj, size);
+
+    newAlloc = true; //set flag for new page allocation on successful commit
+    return page_obj;
+  }
+
+  const Page* GuestVmAddressSpace::MapAddress(uint64 GVA, uint64 size, bool isInstr, const GenPageRequest* pPageReq, bool& newAlloc)
+  {
+    const Page* map_page = GetPage(GVA);
+    if (nullptr != map_page)
+    {
+      return map_page;
+    }
+
+    if (nullptr == pPageReq)
+    {
+      pPageReq = DefaultPageRequest(isInstr);
+    }
+
+    bool is_sys_page = false;
+    const ConstraintSet* sys_page_choice = pPageReq->PteAttributeConstraint(EPteAttributeType::SystemPage);
+    if (sys_page_choice != nullptr)
+    {
+      is_sys_page = (sys_page_choice->ChooseValue());
+    }
+
+    GenPageRequest* updated_page_req = pPageReq->Clone();
+    unique_ptr<GenPageRequest> page_req_storage(updated_page_req); // delete object when going out of scope.
+
+    const Page* page_obj = SetupPageMapping(GVA, size, is_sys_page, updated_page_req);
+    CommitPage(page_obj, size);
+
+    /* construct host page request for gpa */ 
+    bool is_flat_map = page_req_storage.get()->GenBoolAttributeDefaultFalse(EPageGenBoolAttrType::FlatMap);
+    unique_ptr<GenPageRequest> host_page_req(mpGenerator->GenPageRequestInstance(isInstr, page_req_storage.get()->MemoryAccessType()));
+    if (is_flat_map) {
+      host_page_req->SetGenBoolAttribute(EPageGenBoolAttrType::FlatMap, true);
+    }
+    if (is_sys_page) {
+      host_page_req->SetPteAttribute(EPteAttributeType::SystemPage, 1);
+    }
+    host_page_req->SetPteAttribute(EPteAttributeType::U, 1);
+
+    VmManager* vm_manager = mpGenerator->GetVmManager();
+    VmMapper* host_VmMapper = vm_manager->CurrentVmMapper();
+    host_VmMapper->MapAddressRangeForGpa(page_obj->PhysicalLower(), page_obj->PageSize(), isInstr, host_page_req.get());
 
     newAlloc = true; //set flag for new page allocation on successful commit
     return page_obj;
@@ -798,6 +1025,51 @@ namespace Force {
     return ret_page;
   }
 
+  const Page* VmAddressSpace::SetupPageMappingForGpa(uint64 GPA, uint64 size, bool isSysPage, GenPageRequest* pPageReq)
+  {
+    const string& granule_suffix = mpControlBlock->PageGranuleSuffix(GPA);
+    ChoiceTree* choices_tree = nullptr;
+    if (isSysPage)
+      choices_tree = mpControlBlock->GetChoicesAdapter()->GetSystemPageSizeChoiceTree(granule_suffix);
+    else
+      choices_tree = mpControlBlock->GetChoicesAdapter()->GetPageSizeChoiceTree(granule_suffix);
+
+    unique_ptr<ChoiceTree> choices_tree_storage(choices_tree);
+
+    const Page* ret_page = nullptr;
+    PageSizeInfo psize_info;
+
+    psize_info.UpdateMaxPhysical(mpControlBlock->MaxPhysicalAddress());
+
+    try
+    {
+      while (true)
+      {
+        auto  chosen_ptr       = choices_tree->ChooseMutable();
+        const string& size_str = chosen_ptr->Name();
+        PageSizeInfo::StringToPageSizeInfo(size_str, psize_info);
+
+        string err_msg;
+        ret_page = CreateGuestPage(GPA, size, pPageReq, psize_info, err_msg);
+        if (nullptr == ret_page) {
+          LOG(info) << "{VmPaMapper::SetupPageMappingForGpa} failed to create page for GPA=0x" << hex << GPA << " size=" << dec << size << ", due to: " << err_msg << endl;
+          chosen_ptr->SetWeight(0);
+          continue;
+        }
+
+        break;
+      }
+    }
+    catch (const ChoicesError& choices_error)
+    {
+      stringstream err_stream;
+      err_stream << "Paging selection - failed to pick choice: " << choices_error.what();
+      throw PagingError(err_stream.str());
+    }
+
+    return ret_page;
+  }
+
   const Page* VmAddressSpace::SetupPageMappingForPA(uint64 PA, EMemBankType bank, uint64 size, bool isInstr, GenPageRequest* pPageReq)
   {
     VmPaMapper * pa_mapper = mpVmFactory->VmPaMapperInstance(this);
@@ -852,12 +1124,67 @@ namespace Force {
     return ret_page;
   }
 
+  const Page* VmAddressSpace::CreateGuestPage(uint64 GPA, uint64 size, GenPageRequest* pPageReq, PageSizeInfo& rSizeInfo, string& rErrMsg)
+  {
+    rSizeInfo.UpdateStart(GPA);
+    if (not GuestPhysicalMappingAvailable(rSizeInfo.Start(), rSizeInfo.End())) {
+      rErrMsg += string_snprintf(128, "{VmAddressSpace::CreateGuestPage} page for GPA=%#llx will overlap existing pages with page size: ", GPA) + EPteType_to_string(rSizeInfo.mType);
+      return nullptr;
+    }
+
+    auto size_in_page = rSizeInfo.GetSizeInPage(GPA, size);
+    LOG(info) << "{VmAddressSpace::CreateGuestPage} page type=" << EPteType_to_string(rSizeInfo.mType) << " GPA=0x" << hex << GPA << " size=0x" << size << " size-in-page=0x" << size_in_page << endl;
+
+    string pte_id_str = mpControlBlock->PagePteIdentifier(rSizeInfo.mType, GPA);
+    auto pte_struct = mpGenerator->GetGstagePagingInfo()->LookUpPte(pte_id_str);
+
+    ObjectRegistry* obj_registry = ObjectRegistry::Instance();
+    Page* ret_page = obj_registry->TypeInstance<Page>(pte_struct->mClass);
+    ret_page->Initialize(pte_struct, mpVmFactory);
+    ret_page->SetBoundary(rSizeInfo.Start(), rSizeInfo.End());
+
+    EMemBankType target_mem_bank = mpControlBlock->GetTargetMemoryBank(GPA, pPageReq, ret_page, mVmConstraints);
+    if (not AllocatePhysicalPage(GPA, size, pPageReq, rSizeInfo, target_mem_bank, mpControlBlock->GetChoicesAdapter())) {
+      rErrMsg += "{VmAddressSpace::CreateGuestPage} failed to allocate physical page";
+      delete ret_page;
+      ret_page = nullptr;
+      return nullptr;
+    }
+
+    RootPageTable* root_table = mpControlBlock->GetGstageRootPageTable(GPA);
+
+    ret_page->SetPhysicalBoundary(rSizeInfo.PhysicalStart(), rSizeInfo.PhysicalEnd());
+    ret_page->SetMemoryBank(target_mem_bank);
+    ret_page->SetRootPageTable(root_table);
+    ret_page->Generate(*pPageReq, *this);
+
+    root_table->ConstructGstagePageTableWalk(GPA, ret_page, this, *pPageReq);
+
+    return ret_page;
+  }
+
   bool VmAddressSpace::VirtualMappingAvailable(uint64 start, uint64 end) const
   {
     mpLookUpPage->SetBoundary(start, end);
 
     auto find_iter = lower_bound(mPages.begin(), mPages.end(), mpLookUpPage, compare_pages);
     if (find_iter != mPages.end())
+    {
+      if ((*find_iter)->Overlaps(*mpLookUpPage))
+      {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  bool VmAddressSpace::GuestPhysicalMappingAvailable(uint64 start, uint64 end) const
+  {
+    mpLookUpPage->SetBoundary(start, end);
+
+    auto find_iter = lower_bound(mGuestPages.begin(), mGuestPages.end(), mpLookUpPage, compare_pages);
+    if (find_iter != mGuestPages.end())
     {
       if ((*find_iter)->Overlaps(*mpLookUpPage))
       {
@@ -899,8 +1226,71 @@ namespace Force {
     mpControlBlock->CommitPage(pageObj, mVmConstraints);
   }
 
+  void VmAddressSpace::CommitGuestPage(const Page* pageObj, uint64 size)
+  {
+    LOG(notice) << "{VmAddressSpace::CommitGuestPage} Committing " << pageObj->ToString() << endl;
+
+
+    auto last_iter = mGuestPages.end();
+    auto find_iter = lower_bound(mGuestPages.begin(), last_iter, pageObj, compare_pages);
+
+    // sanity check, if page being committed overlap with existing pages.
+    // case 1 (find_iter == last_iter) means no match found.
+    if (find_iter != last_iter) {
+      // found lower bound, check if really overlap
+      if ((*find_iter)->Overlaps(*pageObj)) {
+        LOG(fail) << "{VmAddressSpace::CommitGuestPage} committing page " << pageObj->VaRangeString() << " overlaps with " << (*find_iter)->VaRangeString() << endl;
+        FAIL("commit-page-overlaps-existing");
+      }
+    }
+
+    // not overlapping
+    mGuestPages.insert(find_iter, pageObj);
+  }
+
+  void GuestVmAddressSpace::CommitPage(const Page* pageObj, uint64 size)
+  {
+    LOG(notice) << "{GuestVmAddressSpace::CommitPage} Committing " << pageObj->ToString() << endl;
+
+    //auto mem_manager   = mpGenerator->GetGuestMemoryManager();
+    auto mem_manager   = mpGenerator->GetMemoryManager();
+    auto mem_bank_type = pageObj->MemoryBank();
+
+    auto last_iter = mPages.end();
+    auto find_iter = lower_bound(mPages.begin(), last_iter, pageObj, compare_pages);
+
+    // sanity check, if page being committed overlap with existing pages.
+    // case 1 (find_iter == last_iter) means no match found.
+    if (find_iter != last_iter) {
+      // found lower bound, check if really overlap
+      if ((*find_iter)->Overlaps(*pageObj)) {
+        LOG(fail) << "{GuestVmAddressSpace::CommitPage} committing page " << pageObj->VaRangeString() << " overlaps with " << (*find_iter)->VaRangeString() << endl;
+        FAIL("commit-page-overlaps-existing");
+      }
+    }
+
+    // not overlapping
+    mPages.insert(find_iter, pageObj);
+    if (mpVirtualUsable->IsInitialized()) {
+      UpdateVirtualUsableByPage(pageObj);
+    }
+
+    auto phys_page_manager = mem_manager->GetPhysicalPageManager(mem_bank_type);
+    phys_page_manager->CommitPage(pageObj, size);
+    mpControlBlock->CommitPage(pageObj, mVmConstraints);
+  }
+
   bool VmAddressSpace::AllocatePhysicalPage(uint64 VA, uint64 size, GenPageRequest* pPageReq, PageSizeInfo& rSizeInfo, EMemBankType memBank, const PagingChoicesAdapter* pChoicesAdapter)
   {
+    auto mem_manager   = mpGenerator->GetMemoryManager();
+    auto phys_page_manager = mem_manager->GetPhysicalPageManager(memBank);
+
+    return phys_page_manager->AllocatePage(mpGenerator->ThreadId(), VA, size, pPageReq, rSizeInfo, pChoicesAdapter);
+  }
+
+  bool GuestVmAddressSpace::AllocatePhysicalPage(uint64 VA, uint64 size, GenPageRequest* pPageReq, PageSizeInfo& rSizeInfo, EMemBankType memBank, const PagingChoicesAdapter* pChoicesAdapter)
+  {
+    //auto mem_manager   = mpGenerator->GetGuestMemoryManager();
     auto mem_manager   = mpGenerator->GetMemoryManager();
     auto phys_page_manager = mem_manager->GetPhysicalPageManager(memBank);
 
@@ -966,6 +1356,47 @@ namespace Force {
     // register page table region for mapping afterwards.
     mPhysicalRegions.push_back(new PhysicalRegion(table_obj->PhysicalLower(), table_obj->PhysicalUpper(), EPhysicalRegionType::PageTable, table_obj->MemoryBank(), EMemDataType::Data, VA));
     mpControlBlock->CommitPageTable(VA, parentTable, table_obj, mVmConstraints);
+
+    return table_obj;
+  }
+
+  TablePte* VmAddressSpace::CreateGstageNextLevelTable(uint64 GPA, const PageTable* parentTable, const GenPageRequest& pPageReq)
+  {
+    // find out next level table memory bank
+    EMemBankType new_mem_type = GetControlBlock()->NextLevelTableMemoryBank(parentTable, pPageReq);
+
+    // allocate page table
+    PageTableConstraint* page_table_constr = mGstagePageTableConstraints[EMemBankTypeBaseType(new_mem_type)];
+    uint64 tb_size = mpControlBlock->GetGstageRootPageTable(GPA)->NextTableSize();
+    unique_ptr<ConstraintSet> exclude_region_ptr(mpControlBlock->GetPageTableExcludeRegion(GPA, new_mem_type, mVmConstraints));
+    uint64 tb_start = page_table_constr->AllocatePageTable(tb_size, tb_size, exclude_region_ptr.get());
+
+    // Remove any page table block addresses that may have been allocated from the initial virtual
+    // usable constraint
+    mpVirtualUsable->MarkUsed(*(page_table_constr->BlockAllocated()));
+
+    // instantiate TablePte object
+    auto pte_id_str = mpControlBlock->GetGstageRootPageTable(GPA)->TableIdentifier();
+    auto pte_struct = mpGenerator->GetGstagePagingInfo()->LookUpPte(pte_id_str);
+    ObjectRegistry* obj_registry = ObjectRegistry::Instance();
+    TablePte* table_obj = obj_registry->TypeInstance<TablePte>(pte_struct->mClass);
+
+    // setup page table details.
+    table_obj->Initialize(pte_struct, mpVmFactory);
+    table_obj->SetTableBase(tb_start);
+    table_obj->SetPhysicalBoundary(tb_start, tb_start + (tb_size - 1));
+    uint32 parent_low_bit = parentTable->LowestLookUpBit();
+    uint32 table_step = mpControlBlock->GetGstageRootPageTable(GPA)->NextTableStep();
+    table_obj->SetLookUpBitRange(parent_low_bit - table_step, parent_low_bit - 1);
+    table_obj->SetLevel(parentTable->TableLevel() - 1);
+    table_obj->SetMemoryBank(new_mem_type);
+    table_obj->Generate(pPageReq, *this);
+
+    mpControlBlock->CommitPageTable(GPA, parentTable, table_obj, mVmConstraints);
+    mVmConstraints[uint32(EVmConstraintType::PageTable)]->AddRange(table_obj->PhysicalLower(), table_obj->PhysicalUpper());
+
+    // register page table region for mapping afterwards.
+    mPhysicalRegions.push_back(new PhysicalRegion(table_obj->PhysicalLower(), table_obj->PhysicalUpper(), EPhysicalRegionType::PageTable, table_obj->MemoryBank(), EMemDataType::Data, GPA));
 
     return table_obj;
   }

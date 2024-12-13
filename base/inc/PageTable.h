@@ -52,6 +52,7 @@ namespace Force {
 
     bool UnconstructedTableLevel(const Page* pageObj, uint64& rLevel); //!< Get level of first unconstructed table in page table walk, returns page level if tablewalk is already present
     void ConstructPageTableWalk(uint64 VA, Page* pageObj, VmAddressSpace* pVmas, const GenPageRequest& pPageReq); //!< Construct page table walk details.
+    void ConstructGstagePageTableWalk(uint64 GPA, Page* pageObj, VmAddressSpace* pVmas, const GenPageRequest& pPageReq); //!< Construct G-stage page table walk details.
     const TablePte* PageTableWalk(const Page* pageObj, const VmAddressSpace* pVmas, PageTableInfoRec& page_table_rec) const; // page table walk one step at a time without table construction
     const std::string PageTableInfo() const; //!< Return brief page table info in a string format.
   protected:
@@ -61,6 +62,7 @@ namespace Force {
     uint32 GetPteIndex(uint64 address) const; //!< Get index for associated PTE given the address it covers.
     TablePte* GetNextLevelTable(uint64 pageStart) const; //!< Get next level table that covers the address passed in.
     void CommitPageTableEntry(uint64 pageStart, PageTableEntry* pPte, VmAddressSpace* pVmas); //!< Insert PTE object into the table.
+    void CommitGstagePageTableEntry(uint64 pageStart, PageTableEntry* pPte, VmAddressSpace* pVmas); //!< Insert PTE object into the table.
   protected:
     EMemBankType mMemoryBank; //!< The memory bank where the page table is located.
     uint32 mMask; //!< Mask to extract index for PTE in the table.

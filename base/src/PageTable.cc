@@ -26,6 +26,7 @@
 #include "VmAddressSpace.h"
 #include "VmUtils.h"
 #include "VmasControlBlock.h"
+#include "Generator.h"
 
 /*!
   \file PageTable.cc
@@ -109,7 +110,7 @@ namespace Force {
 
     uint64 page_start = pageObj->Lower();
     uint32 pte_index = GetPteIndex(page_start);
-    page_table_rec.descr_addr = TableBase() + (pte_index << pVmas->GetControlBlock()->PteShift());
+    page_table_rec.descr_addr = TableBase() + (pte_index << pVmas->GetControlBlock()->PteShift(pVmas->GetGenerator()->GetPagingInfo()));
     page_table_rec.level = TableLevel();
     if (level_gap == 0) {
       page_table_rec.descr_value = pageObj->Descriptor();
@@ -156,6 +157,33 @@ namespace Force {
     next_level_table->ConstructPageTableWalk(VA, pageObj, pVmas, pPageReq);
   }
 
+  void PageTable::ConstructGstagePageTableWalk(uint64 GPA, Page* pageObj, VmAddressSpace* pVmas, const GenPageRequest& pPageReq)
+  {
+    uint32 level_gap = (TableLevel() - pageObj->Level());
+    if (level_gap > MAX_PAGE_TABLE_LEVEL) {
+      LOG(fail) << "{VmAddressSpace::ConstructGstagePageTableWalk} level gap too large: " << dec << level_gap << " page level " << pageObj->Level() << " table level " << TableLevel() << endl;
+      FAIL("table-level-gap-too-large");
+    }
+
+    uint64 page_start = pageObj->Lower();
+    if (level_gap == 0) {
+      // insert Page object to this table.
+      CommitGstagePageTableEntry(page_start, pageObj, pVmas);
+      return;
+    }
+
+    auto next_level_table = GetNextLevelTable(page_start);
+    if (nullptr == next_level_table) {
+      // need to create more level(s) of tables.
+      next_level_table = pVmas->CreateGstageNextLevelTable(GPA, this, pPageReq);
+      CommitGstagePageTableEntry(page_start, next_level_table, pVmas);
+    } else {
+      // << "found existing page table : " << next_level_table->ToString() << endl;
+    }
+
+    next_level_table->ConstructGstagePageTableWalk(GPA, pageObj, pVmas, pPageReq);
+  }
+
   TablePte* PageTable::GetNextLevelTable(uint64 pageStart) const
   {
     uint32 pte_index = GetPteIndex(pageStart);
@@ -183,7 +211,24 @@ namespace Force {
     mEntries[pte_index] = pPte;
 
     // write descriptor to memory.
-    uint64 descr_addr = TableBase() + (pte_index << pVmas->GetControlBlock()->PteShift());
+    uint64 descr_addr = TableBase() + (pte_index << pVmas->GetControlBlock()->PteShift(pVmas->GetGenerator()->GetPagingInfo()));
+    uint64 descr_value = pPte->Descriptor();
+    LOG(notice) << "Writing descriptor 0x" << hex << descr_value << " to address [" << uint32(mMemoryBank) << "]0x" << descr_addr << " size " << dec << pPte->DescriptorSize() << " " << pPte->DescriptorDetails() << endl;
+    pVmas->WriteDescriptor(descr_addr, mMemoryBank, descr_value, pPte->DescriptorSize() / 8);
+  }
+
+  void PageTable::CommitGstagePageTableEntry(uint64 pageStart, PageTableEntry* pPte, VmAddressSpace* pVmas)
+  {
+    uint32 pte_index = GetPteIndex(pageStart);
+    auto pte_finder = mEntries.find(pte_index);
+    if (pte_finder != mEntries.end()) {
+      LOG(fail) << "{PageTable::CommitGstagePageTableEntry} inserting PTE where there is an existing PTE at index 0x" << hex << pte_index << " in " << this->PageTableInfo() << " descriptor: " << pPte->DescriptorDetails() << " existing descriptor: " << pte_finder->second->DescriptorDetails() << endl;
+      FAIL("duplicated-pte-in-table");
+    }
+    mEntries[pte_index] = pPte;
+
+    // write descriptor to memory.
+    uint64 descr_addr = TableBase() + (pte_index << pVmas->GetControlBlock()->PteShift(pVmas->GetGenerator()->GetGstagePagingInfo()));
     uint64 descr_value = pPte->Descriptor();
     LOG(notice) << "Writing descriptor 0x" << hex << descr_value << " to address [" << uint32(mMemoryBank) << "]0x" << descr_addr << " size " << dec << pPte->DescriptorSize() << " " << pPte->DescriptorDetails() << endl;
     pVmas->WriteDescriptor(descr_addr, mMemoryBank, descr_value, pPte->DescriptorSize() / 8);

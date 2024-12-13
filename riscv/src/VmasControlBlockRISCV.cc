@@ -160,11 +160,10 @@ namespace Force {
 
   //!< Return PTE shift based on paging mode...
   //
-  uint32 VmasControlBlockRISCV::PteShift() const
+  uint32 VmasControlBlockRISCV::PteShift(const PagingInfo* paging_info) const
   {
     uint32 pte_shift = 0;
 
-    const PagingInfo* paging_info = mpGenerator->GetPagingInfo();
     switch (paging_info->GetPagingMode()) {
       case EPagingMode::Sv32:
       case EPagingMode::Sv32x4:

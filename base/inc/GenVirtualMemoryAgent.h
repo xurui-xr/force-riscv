@@ -46,6 +46,7 @@ namespace Force {
     void ResetRequest() override; //!< Reset request item.
 
     void GenVA(); //!< Generate a valid virtual address.
+    void GenGVA(); //!< Generate a valid guest virtual address.
     void GenVMVA();  //!< Generate a valid virtual address for the given VM context.
     void GenPA(); //!< Generate a valid physical address.
     void GenVAforPA(); //!< Generate a valid virtual address that translates to the given physical address.

@@ -60,6 +60,8 @@ namespace Force {
     virtual void Setup(Generator* gen) { mpGenerator = gen; } //!< Setup the virtual memory mapper object.
     virtual void Activate()   { mState = EVmStateType::Active;        } //!< Activate the VmMapper object.
     virtual void Initialize() { mState = EVmStateType::Initialized;   } //!< Initialize the VmMapper object.
+    virtual void GuestActivate()   { mState = EVmStateType::Active;        } //!< Activate the guest VmMapper object.
+    virtual void GuestInitialize() { mState = EVmStateType::Initialized;   } //!< Initialize the guest VmMapper object.
     virtual void Deactivate() { mState = EVmStateType::Uninitialized; } //!< Deactivate the VmMapper object.
     bool IsActive()      const { return (mState == EVmStateType::Active); } //!< Return if the VmMapper is active.
     bool IsInitialized() const { return (mState == EVmStateType::Active || mState == EVmStateType::Initialized); } //!< Return if the VmMapper is active.
@@ -82,6 +84,7 @@ namespace Force {
     virtual bool   GetPageInfo(uint64 addr, const std::string& type, uint32 bank, PageInformation& page_info) const = 0; //!< Return the page information record according to the given address/address type
     virtual bool   GetTranslationRange(uint64 VA, TranslationRange& rTransRange) const = 0; //!< Get translation range that covers the VA, if exists.
     virtual bool   MapAddressRange(uint64 VA, uint64 size, bool isInstr, const GenPageRequest* pPageReq=nullptr) = 0; //!< Map virtual address range.
+    virtual bool   MapAddressRangeForGpa(uint64 GPA, uint64 size, bool isInstr, const GenPageRequest* pPageReq=nullptr) = 0; //!< Map guest physical address range to host.
     virtual bool   VaInAddressErrorRange(const uint64 VA) const = 0; //!< Check if VA is in address error range.
     virtual bool   ValidateContext(std::string& rErrMsg) const = 0; //!< Validate a VmMapper's context is valid before switching into it.
     virtual uint32 GenContextId() const = 0; //!< By default this is not implemented.
@@ -113,6 +116,7 @@ namespace Force {
   };
 
   class VmAddressSpace;
+  class GuestVmAddressSpace;
   class VmContext;
 
   /*!
@@ -137,7 +141,9 @@ namespace Force {
 
     virtual void Setup(Generator* gen) { mpGenerator = gen; } //!< Setup the virtual memory regime object.
     virtual void Activate()   { mState = EVmStateType::Active;        } //!< Activate the VmRegime object.
+    virtual void GuestActivate()   { mState = EVmStateType::Active;        } //!< Activate the guest VmRegime object.
     virtual void Initialize() { mState = EVmStateType::Initialized;   } //!< Initialize the VmRegime object.
+    virtual void GuestInitialize() { mState = EVmStateType::Initialized;   } //!< Initialize the guest VmRegime object.
     virtual void Deactivate() { mState = EVmStateType::Uninitialized; } //!< Deactivate the VmRegime object.
 
     virtual void DumpPage(const EDumpFormat dumpFormat, std::ofstream& os) const { } //!< Dump pages.
@@ -189,6 +195,7 @@ namespace Force {
     virtual bool GetPageInfo(uint64 addr, const std::string& type, uint32 bank, PageInformation& page_info) const override { return false; } //!< Return the page information record according to the given address/address type
     virtual bool GetTranslationRange(uint64 VA, TranslationRange& rTransRange) const override; //!< Get translation range that covers the VA, if exists.
     virtual bool MapAddressRange(uint64 VA, uint64 size, bool isInstr, const GenPageRequest* pPageReq=nullptr) override { return false; } //!< Map virtual address range.
+    virtual bool MapAddressRangeForGpa(uint64 VA, uint64 size, bool isInstr, const GenPageRequest* pPageReq=nullptr) override { return false; } //!< Map guest physical address range to host.
     virtual bool VaInAddressErrorRange(const uint64 VA) const override; //!< Check if VA is in address error range.
     virtual bool ValidateContext(std::string& rErrMsg) const override; //!< Validate a VmMapper's context is valid before switching into it.
     virtual uint32 GenContextId() const override; //!< Return context ID.
@@ -246,6 +253,8 @@ namespace Force {
     virtual void Setup(Generator* gen) override; //!< Setup this VmPagingMapper object.
     virtual void Activate()   override; //!< Activate the VmPagingMapper.
     virtual void Initialize() override; //!< Activate the VmPagingMapper.
+    virtual void GuestActivate()   override; //!< Activate the guest VmPagingMapper.
+    virtual void GuestInitialize() override; //!< Activate the guest VmPagingMapper.
     virtual void Deactivate() override; //!< Deactivate the VmPagingMapper.
 
     //VmMapper Overrides
@@ -257,6 +266,7 @@ namespace Force {
     virtual bool GetPageInfo(uint64 addr, const std::string& type, uint32 bank, PageInformation& page_info) const override; //!< Return the page information record according to the given address/address type
     virtual bool GetTranslationRange(uint64 VA, TranslationRange& rTransRange) const override; //!< Get translation range that covers the VA from a Page object, if exists.
     virtual bool MapAddressRange(uint64 VA, uint64 size, bool isInstr, const GenPageRequest* pPageReq=nullptr) override; //!< Map virtual address range.
+    virtual bool MapAddressRangeForGpa(uint64 VA, uint64 size, bool isInstr, const GenPageRequest* pPageReq=nullptr) override; //!< Map guest physical address range to host.
     virtual bool VaInAddressErrorRange(const uint64 VA) const override; //!< Check if VA is in address space error range.
     virtual bool ValidateContext(std::string& rErrMsg) const override; //!< Validate VmPagingMapper context.
     virtual bool VerifyStreamingPageCrossing(uint64 start, uint64 end) const override; //!< Check instruction stream page crossing.
@@ -281,11 +291,13 @@ namespace Force {
 
     void SetPagingRegime(const VmPagingRegime* pPagingRegime) { mpPagingRegime = pPagingRegime; } //!< Set pointer to parent paging regime.
     VmAddressSpace* CreateAddressSpace(const VmContext* pVmContext = nullptr); //!< Create an VmAddressSpace object based on vmContextParameters.
+    GuestVmAddressSpace* CreateGuestAddressSpace(const VmContext* pVmContext = nullptr); //!< Create an GuestVmAddressSpace object based on vmContextParameters.
     VmAddressSpace* FindAddressSpace(const VmContext& rVmContext); //!< Find VmAddressSpace that matches the VmContext object if exist.
     const VmAddressSpace* CurrentAddressSpace() { return mpCurrentAddressSpace; } //!< get CurrentAddressSpace.
   protected:
     VmPagingMapper(const VmPagingMapper& rOther) : VmMapper(rOther), Object(rOther), mpCurrentAddressSpace(nullptr), mpPagingRegime(nullptr), mpAddressTagging(nullptr), mAddressSpaces() { } //!< Copy constructor.
     virtual VmAddressSpace* AddressSpaceInstance(VmasControlBlock* pVmasCtlrBlock) const; //!< Return a bare-bone VmAddressSpace object.
+    virtual GuestVmAddressSpace* GuestAddressSpaceInstance(VmasControlBlock* pVmasCtlrBlock) const; //!< Return a bare-bone GuestVmAddressSpace object.
     virtual inline uint64 PageCrossMask(void) const { return 0xfffffffffffff000ull; } //!< Default page crossing check using 4K page size.
     void AddAddressSpace(VmAddressSpace* pAddressSpace); //!< Add VmAddressSpace object to the vector.
     void UpdateCurrentAddressSpace(); //!< Update current VmAddressSpace.
@@ -314,7 +326,9 @@ namespace Force {
 
     void Setup(Generator* gen) override; //!< Setup this VmPagingRegime object.
     void Activate()   override; //!< Activate the VmPagingRegime.
+    void GuestActivate()   override; //!< Activate the VmPagingRegime for guest.
     void Initialize() override; //!< Initialize the VmPagingRegime.
+    void GuestInitialize() override; //!< Initialize the guest VmPagingRegime.
     void Deactivate() override; //!< Deactivate the VmPagingRegime.
 
     void DumpPage(const EDumpFormat dumpFormat, std::ofstream& os) const override; //!< dump pages

@@ -465,6 +465,25 @@ namespace Force {
     LOG(notice) << "Activated address space (Type=" << mpCurrentAddressSpace->Type() << ") : " << mpCurrentAddressSpace->ControlBlockInfo() << endl;
   }
 
+  void VmPagingMapper::GuestActivate()
+  {
+    if (mState == EVmStateType::Uninitialized)
+    {
+      GuestInitialize();
+    }
+
+    if (mState == EVmStateType::Initialized)
+    {
+      mState = EVmStateType::Active;
+    }
+
+    UpdateCurrentAddressSpace();
+
+    mpCurrentAddressSpace->Activate();
+
+    LOG(notice) << "Activated guest address space (Type=" << mpCurrentAddressSpace->Type() << ") : " << mpCurrentAddressSpace->ControlBlockInfo() << endl;
+  }
+
   void VmPagingMapper::Initialize()
   {
     if (mState == EVmStateType::Uninitialized)
@@ -489,6 +508,30 @@ namespace Force {
     }
   }
 
+  void VmPagingMapper::GuestInitialize()
+  {
+    if (mState == EVmStateType::Uninitialized)
+    {
+      if (nullptr == mpCurrentAddressSpace)
+      {
+        mpCurrentAddressSpace = CreateGuestAddressSpace();
+        const VmFactory* vm_factory = mpPagingRegime->GetVmFactory();
+        mpAddressTagging = vm_factory->CreateAddressTagging(*(mpCurrentAddressSpace->GetControlBlock()));
+      }
+      mpPagingRegime->FinalizeRegisterContext();
+      mpCurrentAddressSpace->Initialize();
+      mState = EVmStateType::Initialized;
+
+      std::string err_msg;
+      bool vld = mpCurrentAddressSpace->GetControlBlock()->Validate(err_msg);
+
+      if (!vld) {
+        LOG(fail) << "{VmPagingMapper::GuestInitialize} Bad VM context: " << err_msg << endl;
+        FAIL("init-paging-mapper-bad-context");
+      }
+    }
+  }
+
   void VmPagingMapper::Deactivate()
   {
     mState = EVmStateType::Uninitialized;
@@ -503,6 +546,17 @@ namespace Force {
     const VmFactory* vm_factory = mpPagingRegime->GetVmFactory();
     auto new_ascb = vm_factory->CreateVmasControlBlock(mpPagingRegime->DefaultMemoryBank());
     auto new_as   = AddressSpaceInstance(new_ascb);
+    new_as->Setup(mpGenerator);
+    new_as->UpdateContext(pVmContext);
+    AddAddressSpace(new_as);
+    return new_as;
+  }
+
+  GuestVmAddressSpace* VmPagingMapper::CreateGuestAddressSpace(const VmContext* pVmContext)
+  {
+    const VmFactory* vm_factory = mpPagingRegime->GetVmFactory();
+    auto new_ascb = vm_factory->CreateVmasControlBlock(mpPagingRegime->DefaultMemoryBank());
+    auto new_as   = GuestAddressSpaceInstance(new_ascb);
     new_as->Setup(mpGenerator);
     new_as->UpdateContext(pVmContext);
     AddAddressSpace(new_as);
@@ -587,10 +641,20 @@ namespace Force {
     return new VmAddressSpace(mpVmFactory, pVmasCtlrBlock);
   }
 
+  GuestVmAddressSpace* VmPagingMapper::GuestAddressSpaceInstance(VmasControlBlock* pVmasCtlrBlock) const
+  {
+    return new GuestVmAddressSpace(mpVmFactory, pVmasCtlrBlock);
+  }
+
   bool VmPagingMapper::MapAddressRange(uint64 VA, uint64 size, bool isInstr, const GenPageRequest* pPageReq)
   {
     uint64 untagged_VA = mpAddressTagging->UntagAddress(VA, isInstr);
     return mpCurrentAddressSpace->MapAddressRange(untagged_VA, size, isInstr, pPageReq);
+  }
+
+  bool VmPagingMapper::MapAddressRangeForGpa(uint64 GPA, uint64 size, bool isInstr, const GenPageRequest* pPageReq)
+  {
+    return mpCurrentAddressSpace->MapAddressRangeForGpa(GPA, size, isInstr, pPageReq);
   }
 
   uint64 VmPagingMapper::MapAddressRangeForPA(uint64 PA, EMemBankType bank, uint64 size, bool isInstr, const GenPageRequest* pPageReq)
@@ -785,6 +849,23 @@ namespace Force {
     mpCurrentMapper->Activate();
   }
 
+  void VmPagingRegime::GuestActivate()
+  {
+    if (mState == EVmStateType::Uninitialized)
+    {
+      GuestInitialize();
+    }
+
+    if (mState == EVmStateType::Initialized)
+    {
+      mState = EVmStateType::Active;
+    }
+
+    UpdateCurrentMapper();
+
+    mpCurrentMapper->GuestActivate();
+  }
+
   void VmPagingRegime::Initialize()
   {
     if (mState == EVmStateType::Uninitialized)
@@ -794,6 +875,17 @@ namespace Force {
     }
 
     mpCurrentMapper->Initialize();
+  }
+
+  void VmPagingRegime::GuestInitialize()
+  {
+    if (mState == EVmStateType::Uninitialized)
+    {
+      UpdateCurrentMapper();
+      mState = EVmStateType::Initialized;
+    }
+
+    mpCurrentMapper->GuestInitialize();
   }
 
   void VmPagingRegime::Deactivate()
